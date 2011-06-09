@@ -54,8 +54,9 @@
 ;-------------------------------------------------------------------------
 ; Global variables and stuff
 
+$CONFIGFILE = "config.ini"
 ;Check for config File
-If (FileExists("config.ini") ==0) Then
+If (FileExists($CONFIGFILE) ==0) Then
 	MsgBox(16,"Error","Config file not found.")
 	Exit
 EndIf
@@ -63,12 +64,12 @@ EndIf
 $VERSION = "V1.2"
 $WZCSVCStarted = 0
 $progress_meter = 0
-$SSID1 = IniRead("config.ini", "getprofile", "ssid1", "eduroam")
-$SSID2 = IniRead("config.ini", "getprofile", "ssid2", "")
-$SSID3 = IniRead("config.ini", "getprofile", "ssid3", "")
-$wireless=IniRead("config.ini", "su1x", "wireless", "1")
-$wireless=IniRead("config.ini", "su1x", "wireless", "1")
-$DEBUG=IniRead("config.ini", "su1x", "DEBUG", "0")
+$SSID1 = IniRead($CONFIGFILE, "getprofile", "ssid1", "eduroam")
+$SSID2 = IniRead($CONFIGFILE, "getprofile", "ssid2", "")
+$SSID3 = IniRead($CONFIGFILE, "getprofile", "ssid3", "")
+$wireless=IniRead($CONFIGFILE, "su1x", "wireless", "1")
+$wireless=IniRead($CONFIGFILE, "su1x", "wireless", "1")
+$DEBUG=IniRead($CONFIGFILE, "su1x", "DEBUG", "0")
 $progressbar1 = ""
 $os = "win7"
 
@@ -173,12 +174,12 @@ Func CaptureWirelessProfile($ssid)
         Return
     EndIf
     $Enum = _Wlan_EnumInterfaces($hClientHandle)
-    if @error Then 
+    if @error Then
         doDebug("No Interface Found")
         SetError(1)
         Return
     EndIf
-    
+
     If (UBound($Enum) == 0) Then
         DoDebug("[setup]Enumeration of wlan adapter" & @error)
         MsgBox(16, "Error", "No Wireless Adapter Found.")
@@ -308,39 +309,12 @@ While 1
                     $profile = CaptureWirelessProfile($CAPSSID)
                     if (@error) Then
                         doDebug("Couldn't capture "&$CAPSSID&" profile")
-                    Else                
+                    Else
                         UpdateProgress(10);
-                        SaveXMLProfile($CAPSSID & ".xml", $profile)
+                        SaveXMLProfile($CAPSSID, $profile)
                         UpdateProgress(10);
                     EndIf
                 Next
-                ;UpdateProgress(10)
-                ;DoDebug("Capturing "&$SSID)
-                ;$profile = CaptureWirelessProfile($SSID)
-                ;if (@error) Then
-                ;    doDebug("Couldn't capture "&$SSID&" profile")
-                ;Else                
-                ;    UpdateProgress(10);
-                ;    SaveXMLProfile($SSID, $profile)
-                ;    UpdateProgress(10);
-                ;EndIf
-                ;$wifi_eduroam=_Wlan_GetProfile($hClientHandle, $pGUID,$SSID)
-                ;$findProfile = _ArrayFindAll($wifi_eduroam, $SSID)
-                ;if (@error) Then
-                ;    $findProfile=False
-                ;Else
-                ;    $findProfile=True
-                ;EndIf
-
-                ;if ($findProfile) Then
-                ;    if ($DEBUG>0) Then _ArrayDisplay($wifi_eduroam, "Details of profile captured")
-                ;    $wifi_eduroam_all=$wifi_eduroam[0] & "," & $wifi_eduroam[1] & "," & $wifi_eduroam[2] & "," & $wifi_eduroam[3] & "," & $wifi_eduroam[4] & "," & $wifi_eduroam[5] & "," & $wifi_eduroam[6] & "," & $wifi_eduroam[7]
-                ;    ;DoDebug($wifi_eduroam_all)
-                ;EndIf
-
-                ;ConsoleWrite("Call Error: " & @error & @LF)
-                ;doDebug(_Wlan_GetErrorMessage($a_iCall[0]))
-                ;ConsoleWrite($a_iCall[5] & @LF)
             Else
                 ;---------------------------------------------------------------------------------------------------WIRED Capture
                 GUICtrlSetData ($progressbar1,0)

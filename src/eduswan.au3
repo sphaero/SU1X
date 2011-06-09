@@ -245,7 +245,7 @@ EndFunc   ;==>getConfig
 
 Func iterateConfig($section)
 	; return every value under a given section, useful for iterating
-	; multiple ssid to remove/add for instance.
+	; multiple ssid to remove/add profiles for instance.
 	$content = IniReadSection($CONFIGFILE, $section)
 	If @error Then
 		MsgBox(4096, "", "Error occured iterating the config file")
@@ -910,12 +910,12 @@ Func removeProfiles($hClientHandle, $pGUID)
 	$localprofiles = _Wlan_GetProfileList($hClientHandle, $pGUID)
 	; fetch the list of profiles to be removed from config
 	$delprofiles = IterateConfig("remove")
-	
+
 	If (UBound($localprofiles) == 0) Then
 		UpdateOutput("No wireless profiles to remove found")
 	Else
-		For $delssid in $delprofiles
-			For $localssid in $localprofiles
+		For $delssid In $delprofiles
+			For $localssid In $localprofiles
 				If ($delssid == $localssid) Then
 					RemoveSSID($hClientHandle, $pGUID, $localssid)
 					UpdateOutput("Removed SSID:" & $localssid)
@@ -933,7 +933,9 @@ Func checkAdminRights()
 	EndIf
 EndFunc   ;==>checkAdminRights
 
+
 Func setWirelessProfile($SSID, $os, $hClientHandle, $pGUID)
+	; TODO; only active for win7 loop so far
 	UpdateProgress(10);
 
 	; try to load xml from filename = "{ssidname}_{os}.xml"
@@ -944,15 +946,24 @@ Func setWirelessProfile($SSID, $os, $hClientHandle, $pGUID)
 		$XMLProfile = FileRead($ssidxml)
 		UpdateOutput("Using ssid settings from " & $ssidxml)
 	Else
-		; load a default file.. not sure which one -A
+		; Load a default XML Profile
 		UpdateOutput("Using default ssid settings")
 		$XMLProfile = FileRead("wireless-7.xml")
 	EndIf
+
 	$a_iCall = DllCall($WLANAPIDLL, "dword", "WlanSetProfile", "hwnd", $hClientHandle, "ptr", $pGUID, "dword", 0, "wstr", $XMLProfile, "ptr", 0, "int", 1, "ptr", 0, "dword*", 0)
 	DoDebug("[setup]setProfile return code (profile1" & $xmlfile & ") =" & $a_iCall[0])
+
+	if ($a_iCall[0] > 0) Then
+		UpdateOutput("Error: Return code invalid (WPA2 not supported?)")
+		UpdateOutput("Error: Exiting application")
+		Exit
+	EndIf
+
 EndFunc   ;==>setWirelessProfile
 
 Func setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $SSID)
+	; TODO; only active for win7 loop so far
 	Local $credentials[4]
 	$credentials[0] = "PEAP-MSCHAP" ; EAP method
 	$credentials[1] = "" ;domain
@@ -1452,7 +1463,7 @@ While 1
 					;updateoutput($hClientHandle & "," & $Enum[0][1] & "," &$pGUID)
 
 					;------------------------------------------REMOVING_PROFILES
-					
+
 					removeProfiles($hClientHandle, $pGUID)
 
 
@@ -1471,7 +1482,7 @@ While 1
 						EndIf
 						; todo: set priority for every profile based on config
 					Next
-					
+
 					;set priority of new profile
 					;SetPriority($hClientHandle, $pGUID, $SSID, $priority)
 
@@ -2036,11 +2047,11 @@ While 1
 					ExitLoop (1)
 				EndIf
 				$pGUID = $Enum[0][0]
-				
-				
+
+
 				removeProfiles($hClientHandle, $pGUID)
-			
-			
+
+
 				;remove scheduled task
 				#RequireAdmin
 				;install scheduled task
