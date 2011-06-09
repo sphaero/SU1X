@@ -933,6 +933,15 @@ Func checkAdminRights()
 	EndIf
 EndFunc   ;==>checkAdminRights
 
+Func installCertificate($certfile)
+	DoDebug("[setup]Cert Install = " & $certfile)
+	$result = Run(@ScriptDir & "\CertMgr.Exe /all /add " & $certfile & " /s /r localMachine root", "", @SW_HIDE)
+	;$result = Run(@ScriptDir & "\CertMgr.Exe /add " & $certfile & " /s /r localMachine root", "", @SW_HIDE)
+	DoDebug("[setup]result of cert=" & $result)
+	UpdateOutput("Installed certificate")
+EndFunc   ;==>installCertificate
+
+
 
 Func setWirelessProfile($SSID, $os, $hClientHandle, $pGUID)
 	; TODO; only active for win7 loop so far
@@ -1206,14 +1215,9 @@ While 1
 
 				EndIf
 
-
-				;Certificate install
+				;--------------------------------------------INSTALL CERTIFICATE
 				If ($use_cert == 1) Then
-					DoDebug("[setup]Cert Install = " & $certificate)
-					$result = Run(@ScriptDir & "\CertMgr.Exe /all /add " & $certificate & " /s /r localMachine root", "", @SW_HIDE)
-					;$result = Run(@ScriptDir & "\CertMgr.Exe /add " & $certificate & " /s /r localMachine root", "", @SW_HIDE)
-					DoDebug("[setup]result of cert=" & $result)
-					UpdateOutput("Installed certificate")
+					installCertificate($certificate)
 				EndIf
 
 				;------------------------------------------------WIRELESS CONFIG
@@ -1395,6 +1399,7 @@ While 1
 				;END OF XP CODE*************************************************
 			Else
 				;VISTA / 7 CODE*************************************************
+
 				UpdateOutput("Detected " & $os & "/7")
 				#RequireAdmin
 				checkAdminRights()
@@ -1427,17 +1432,15 @@ While 1
 
 				EndIf
 
-				;Certificate install
+				;--------------------------------------------INSTALL CERTIFICATE
 				If ($use_cert == 1) Then
-					DoDebug("[setup]Cert Install")
-					$result = Run(@ScriptDir & "\CertMgr.Exe /all /add " & $certificate & " /s /r localMachine root", "", @SW_HIDE)
-					;$result = Run(@ScriptDir & "\CertMgr.Exe /add " & $certificate & " /s /r localMachine root", "", @SW_HIDE)
-					DoDebug("[setup]result of cert=" & $result)
-					UpdateOutput("Installed certificate")
+					installCertificate($certificate)
 				EndIf
 
 				;------------------------------------------------WIRELESS CONFIG
 				if ($wireless == 1) Then
+
+					; TODO: clean up run_already loops
 					if ($run_already < 1) Then
 						$hClientHandle = _Wlan_OpenHandle()
 						$Enum = _Wlan_EnumInterfaces($hClientHandle)
@@ -1460,12 +1463,9 @@ While 1
 					$pGUID = $Enum[0][0]
 					DoDebug("[setup] adpter=" & $Enum[0][1])
 
-					;updateoutput($hClientHandle & "," & $Enum[0][1] & "," &$pGUID)
-
 					;------------------------------------------REMOVING_PROFILES
 
 					removeProfiles($hClientHandle, $pGUID)
-
 
 					;-------------------------------------------SETTING_PROFILES
 
@@ -1480,11 +1480,10 @@ While 1
 						if ($showup > 0) Then
 							setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $profile)
 						EndIf
-						; todo: set priority for every profile based on config
+						; Set priority for this profile based on config value
+						; TODO: make tuple for ssidname,priority values
+						; SetPriority($hClientHandle, $pGUID, $profile)
 					Next
-
-					;set priority of new profile
-					;SetPriority($hClientHandle, $pGUID, $SSID, $priority)
 
 					;make sure windows can manage wifi card
 					DoDebug("[setup]Setting windows to manage wifi")
@@ -1591,7 +1590,7 @@ While 1
 
 			EndIf
 
-			;-----------------------------------END CODE
+			;-----------------------------------------------------------END CODE
 			UpdateOutput("***Setup Complete***")
 			if ($probconnect > 0) Then UpdateOutput("***POSSIBLE PROBLEM CONNECTING...")
 			UpdateProgress(10);
@@ -2349,9 +2348,9 @@ While 1
 			EndIf
 		EndIf
 
-		;***************************************************************************************TRY TO CONNECT
+		;*********************************************************TRY TO CONNECT
 
-		;***************************************************************************************MANAGE WIRELESS REAUTH
+		;*************************************************MANAGE WIRELESS REAUTH
 		If (StringInStr($argument1, "auth") > 0) Then
 			DoDebug("[reauth]Disconnecting wifi to retry auth")
 			If (StringInStr(@OSVersion, "7", 0) Or StringInStr(@OSVersion, "VISTA", 0)) Then

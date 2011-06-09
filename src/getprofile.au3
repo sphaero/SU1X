@@ -64,9 +64,9 @@ EndIf
 $VERSION = "V1.2"
 $WZCSVCStarted = 0
 $progress_meter = 0
-$SSID1 = IniRead($CONFIGFILE, "getprofile", "ssid1", "eduroam")
-$SSID2 = IniRead($CONFIGFILE, "getprofile", "ssid2", "")
-$SSID3 = IniRead($CONFIGFILE, "getprofile", "ssid3", "")
+;$SSID1 = IniRead($CONFIGFILE, "getprofile", "ssid1", "eduroam")
+;$SSID2 = IniRead($CONFIGFILE, "getprofile", "ssid2", "")
+;$SSID3 = IniRead($CONFIGFILE, "getprofile", "ssid3", "")
 $wireless=IniRead($CONFIGFILE, "su1x", "wireless", "1")
 $wireless=IniRead($CONFIGFILE, "su1x", "wireless", "1")
 $DEBUG=IniRead($CONFIGFILE, "su1x", "DEBUG", "0")
