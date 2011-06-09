@@ -118,6 +118,8 @@ $SECURE_MACHINE = IniRead($CONFIGFILE, "su1x", "SECURE_MACHINE", "0")
 $DEBUG = IniRead($CONFIGFILE, "su1x", "DEBUG", "0")
 $wireless = IniRead($CONFIGFILE, "su1x", "wireless", "1")
 $wired = IniRead($CONFIGFILE, "su1x", "wired", "0")
+$network = IniRead($CONFIGFILE, "su1x", "network", "eduroam")
+
 $USESPLASH = IniRead($CONFIGFILE, "su1x", "USESPLASH", "0")
 $wired_xmlfile = IniRead($CONFIGFILE, "su1x", "wiredXMLfile", "Wired_Profile.xml")
 $xmlfile = IniRead($CONFIGFILE, "su1x", "xmlfile", "exported.xml")
@@ -167,13 +169,6 @@ $vista_connected = IniRead($CONFIGFILE, "images", "vista_connected", "connected-
 $SSID = IniRead($CONFIGFILE, "getprofile", "ssid", "eduroam")
 $SSID_Fallback = IniRead($CONFIGFILE, "getprofile", "ssid_fallback", "")
 $SSID_Additional = IniRead($CONFIGFILE, "getprofile", "ssid_additional", "eduroam-wpa")
-
-
-;-----SSID to remove
-$removessid = IniRead($CONFIGFILE, "remove", "removessid", "0")
-$SSID1 = IniRead($CONFIGFILE, "remove", "ssid1", "eduroam")
-$SSID2 = IniRead($CONFIGFILE, "remove", "ssid2", "eduroam-setup")
-$SSID3 = IniRead($CONFIGFILE, "remove", "ssid3", "unrioam")
 
 ;------Certificates
 $certificate = IniRead($CONFIGFILE, "certs", "cert", "mycert.cer")
@@ -777,7 +772,7 @@ EndIf
 ;--------------------------Setup Tab
 $tab1 = GUICtrlCreateTabItem("Setup")
 $installb = GUICtrlCreateButton("Start Setup", 10, 270, 80)
-$remove_wifi = GUICtrlCreateButton("Remove " & $SSID, 100, 270, 100)
+$remove_wifi = GUICtrlCreateButton("Remove " & $network, 100, 270, 100)
 ;--------------------------Printing Tab
 $tab2 = GUICtrlCreateTabItem("Printing")
 $print = GUICtrlCreateButton("Setup Printer", 10, 270, 80)
@@ -910,30 +905,23 @@ Func startService($ServiceName, $fullname)
 EndFunc   ;==>startService
 
 Func removeProfiles($hClientHandle, $pGUID)
-	DoDebug("[setup]Removing SSID" & $SSID1)
-	$profiles = _Wlan_GetProfileList($hClientHandle, $pGUID)
-	$doremove = 1
-	If (UBound($profiles) == 0) Then
-		DoDebug("[setup]No wireless profiles to remove found")
-		$doremove = 0
-	EndIf
-	If ($doremove == 1) Then
-		For $ssidremove In $profiles
-			if (StringCompare($ssidremove, $SSID1, 0) == 0) Then
-				RemoveSSID($hClientHandle, $pGUID, $ssidremove)
-				UpdateOutput("Removed SSID:")
-				UpdateOutput($ssidremove)
-			EndIf
-			if (StringCompare($ssidremove, $SSID2, 0) == 0) Then
-				RemoveSSID($hClientHandle, $pGUID, $ssidremove)
-				UpdateOutput("Removed SSID:")
-				UpdateOutput($ssidremove)
-			EndIf
-			if (StringCompare($ssidremove, $SSID3, 0) == 0) Then
-				RemoveSSID($hClientHandle, $pGUID, $ssidremove)
-				UpdateOutput("Removed SSID:")
-				UpdateOutput($ssidremove)
-			EndIf
+
+	; fetch the list of configured profiles on the local machine
+	$localprofiles = _Wlan_GetProfileList($hClientHandle, $pGUID)
+	; fetch the list of profiles to be removed from config
+	$delprofiles = IterateConfig("remove")
+	
+	If (UBound($localprofiles) == 0) Then
+		UpdateOutput("No wireless profiles to remove found")
+	Else
+		For $delssid in $delprofiles
+			For $localssid in $localprofiles
+				If ($delssid == $localssid) Then
+					RemoveSSID($hClientHandle, $pGUID, $localssid)
+					UpdateOutput("Removed SSID:" & $localssid)
+					UpdateProgress(20);
+				EndIf
+			Next
 		Next
 	EndIf
 EndFunc   ;==>removeProfiles
@@ -1217,7 +1205,7 @@ While 1
 					UpdateOutput("Installed certificate")
 				EndIf
 
-				;------------------------------------------------------------------------------------------------------WIRELESS CONFIG
+				;------------------------------------------------WIRELESS CONFIG
 				if ($wireless == 1) Then
 
 					if ($run_already < 1) Then
@@ -1237,11 +1225,7 @@ While 1
 					DoDebug("[setup]Adapter=" & $Enum[0][1])
 
 					;------------------------------------------REMOVING_PROFILES
-					if ($removessid > 0) Then
-						removeProfiles($hClientHandle, $pGUID)
-					EndIf
-
-
+					removeProfiles($hClientHandle, $pGUID)
 
 
 					;SET THE PROFILE
@@ -1348,7 +1332,6 @@ While 1
 									Exit
 								EndIf
 							EndIf
-
 
 
 							if (StringCompare("Disconnected", $retry_state[0], 0) == 0) Then
@@ -1469,9 +1452,8 @@ While 1
 					;updateoutput($hClientHandle & "," & $Enum[0][1] & "," &$pGUID)
 
 					;------------------------------------------REMOVING_PROFILES
-					if ($removessid > 0) Then
-						removeProfiles($hClientHandle, $pGUID)
-					EndIf
+					
+					removeProfiles($hClientHandle, $pGUID)
 
 
 					;-------------------------------------------SETTING_PROFILES
@@ -1481,19 +1463,17 @@ While 1
 					; install wireless profiles for all the SSID's listed in
 					; the config file under the [getprofile] section.
 					For $profile In $addprofiles
-						MsgBox(4096, "ssid to install", $profile)
+						UpdateOutput("Adding profile: " & $profile)
 						setWirelessProfile($profile, $os, $hClientHandle, $pGUID)
+						; Setting EAP Credentials for this profile
 						if ($showup > 0) Then
 							setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $profile)
 						EndIf
-						; set eap creds
-						; set priority
+						; todo: set priority for every profile based on config
 					Next
-
-
+					
 					;set priority of new profile
 					;SetPriority($hClientHandle, $pGUID, $SSID, $priority)
-
 
 					;make sure windows can manage wifi card
 					DoDebug("[setup]Setting windows to manage wifi")
@@ -2056,20 +2036,11 @@ While 1
 					ExitLoop (1)
 				EndIf
 				$pGUID = $Enum[0][0]
-
-
-				;Check for profiles to remove
-				$delprofiles = IterateConfig("remove")
-
-				If (UBound($delprofiles) == 0) Then
-					UpdateOutput("No wireless profiles to remove found")
-				Else
-					For $ssidname In $delprofiles
-						RemoveSSID($hClientHandle, $pGUID, $ssidname)
-						UpdateOutput("Removed SSID:" & $ssidname)
-						UpdateProgress(20);
-					Next
-				EndIf
+				
+				
+				removeProfiles($hClientHandle, $pGUID)
+			
+			
 				;remove scheduled task
 				#RequireAdmin
 				;install scheduled task
