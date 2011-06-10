@@ -259,7 +259,21 @@ Func iterateConfig($section)
 	EndIf
 EndFunc   ;==>iterateConfig
 
-
+;return OS string for use in XML file
+Func GetOSVersion()
+    Select
+    Case StringInStr(@OSVersion, "VISTA", 0)
+        Return "WIN7"
+    Case StringInStr(@OSVersion, "7", 0)
+        Return "WIN7"
+    Case StringInStr(@OSVersion, "XP", 0)
+        If @OSServicePack == "Service Pack 2" Then
+            Return "XPSP2"
+        Else
+            Return "XP"
+        EndIf
+    EndSelect
+EndFunc
 
 
 ; ---------------------------------------------------------------
@@ -1106,6 +1120,7 @@ While 1
 			;**************************************************************************************************************
 
 			If $os == "xp" Then
+				;TODO This block can replaced by code using GetOSVersion()
 				UpdateOutput("Detected Windows XP")
 				CloseWindows()
 				UpdateProgress(10);
@@ -1113,7 +1128,8 @@ While 1
 				If @OSServicePack == "Service Pack 2" Then
 					UpdateOutput("Found Service Pack 2")
 					;use xml file with no valid cert setup
-					$xmlfile = $xmlfilexpsp2
+					;TODO remove this
+					;$xmlfile = $xmlfilexpsp2
 					;Check if hotfix already installed
 					RegRead("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\HotFix\KB918997", "Installed")
 					If @error Then
@@ -1173,10 +1189,13 @@ While 1
 					;check XML profile files are ok
 					UpdateOutput("Configuring Wireless Profile...")
 					UpdateProgress(10);
-					If (FileExists($xmlfile) == 0) Then
-						MsgBox(16, "Error", "Config file missing. Exiting...")
-						Exit
-					EndIf
+					For $CAPSSID in IterateConfig("getprofile")
+						$filename = $CAPSSID&"_"&GetOSVersion()&".xml"
+						If (FileExists($filename) == 0) Then
+							MsgBox(16, "Error", "Config file "&$filename&" is missing. Exiting...")
+							Exit
+						EndIf
+					Next
 
 					;wpa fallback profile
 					If ($tryadditional == 1) Then
