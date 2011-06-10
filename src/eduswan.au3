@@ -448,12 +448,12 @@ EndFunc   ;==>Fallback_Connect
 
 
 Func doHint()
-	if ($os == "xp") Then
+	if (GetOSVersion() == "XP" OR GetOSVersion() == "XPSP2") Then
 		$y = 200
 		$y2 = 50
 		$y3 = 18
 	EndIf
-	if ($os == "vista" Or $os == "win7") Then
+	if (GetOSVersion() == "VISTA" Or GetOSVersion() == "WIN7") Then
 		$y = 120
 		$y2 = 0
 		$y3 = 0
@@ -461,23 +461,23 @@ Func doHint()
 	GUICreate("Configuration Successful", 400, 250 + $y + $y2, 50, 20)
 	GUISetState(@SW_SHOW)
 	GUICtrlCreateLabel($SSID & " configuration was successful!" & @CRLF & @CRLF & "1) Watch for the network connection icon in the bottom right of your screen. " & @CRLF & @CRLF & " This could take a couple of seconds to change.", 5, 5)
-	if ($os == "xp") Then
+	if (GetOSVersion() == "xp") Then
 		GUICtrlCreatePic($bubble_xp_connected, 15, 80, 344, 100)
 	EndIf
-	if ($os == "vista") Then
+	if (GetOSVersion() == "VISTA") Then
 		GUICtrlCreatePic($vista_connected, 15, 80, 33, 30)
 	EndIf
-	if ($os == "win7") Then
+	if (GetOSVersion() == "WIN7") Then
 		GUICtrlCreatePic($win7_connected, 15, 80, 56, 44)
 	EndIf
 	GUICtrlCreateLabel("If you seen the image above, you are successfully connected!", 5, $y)
 	GUICtrlCreateLabel("Please click Finish and exit the tool", 5, $y + 20)
 	;Watch for the bubble (As shown in the image below) to appear in the" & @CRLF & "System Tray near the clock.
 	GUICtrlCreateLabel("2) If a bubble appears like the image below, click it." & @CRLF & @CRLF & "3) When prompted, enter your username (e.g. " & $username & ") and" & @CRLF & "   password but Leave the ""Logon domain"" field blank." & @CRLF & @CRLF & "4) Click ""OK"" on the ""Enter Credentials"" window", 5, $y + 40)
-	if ($os == "xp") Then
+	if (GetOSVersion() == "xp") Then
 		GUICtrlCreatePic($bubblexp, 15, $y + 130, 373, 135)
 	EndIf
-	if ($os == "vista" Or $os = "win7") Then
+	if (GetOSVersion() == "VISTA" Or GetOSVersion() = "WIN7") Then
 		GUICtrlCreatePic($bubblevista, 15, $y + 130, 374, 59)
 	EndIf
 	$finish = GUICtrlCreateButton("Finish", 150, $y + $y2 + $y3 + 200, 100, 25)
@@ -1173,18 +1173,15 @@ While 1
 
 			;Check OS version
 			If (StringInStr(@OSVersion, "VISTA", 0)) Then
-				$os = "vista"
 				#RequireAdmin
 			EndIf
 
-			If (StringInStr(@OSVersion, "7", 0)) Then
-				$os = "win7"
+			If (StringInStr(@OSVersion, "WIN7", 0)) Then
 				#RequireAdmin
 				checkAdminRights()
 			EndIf
 
 			If (StringInStr(@OSVersion, "XP", 0)) Then
-				$os = "xp"
 				$sp = 0
 			EndIf
 
@@ -1210,7 +1207,7 @@ While 1
 
 			;**************************************************************************************************************
 
-			If $os == "xp" Then
+			If (GetOSVersion() == "xp") Then
 				;TODO This block can replaced by code using GetOSVersion()
 				UpdateOutput("Detected Windows XP")
 				CloseWindows()
@@ -1375,7 +1372,7 @@ While 1
 			Else
 				;VISTA / 7 CODE*************************************************
 
-				UpdateOutput("Detected " & $os & "/7")
+				UpdateOutput("Detected " & GetOSVersion() & "/7")
 				#RequireAdmin
 				checkAdminRights()
 
@@ -1588,20 +1585,14 @@ While 1
 			;vist or xp check
 			;Check OS version
 			$output = ""
-			If (StringInStr(@OSVersion, "VISTA", 0)) Then
-				$os = "vista"
+			If (GetOSVersion() == "VISTA") Then
 				#RequireAdmin
 				checkAdminRights()
 			EndIf
 
-			If (StringInStr(@OSVersion, "7", 0)) Then
-				$os = "win7"
+			If (GetOSVersion() == "WIN7") Then
 				#RequireAdmin
 				checkAdminRights()
-			EndIf
-
-			If (StringInStr(@OSVersion, "XP", 0)) Then
-				$os = "xp"
 			EndIf
 
 			if (StringLen($SSID_Fallback) > 0 And $msg == $gethelp) Then
@@ -1893,7 +1884,7 @@ While 1
 					if ($send_problem == 1 And $ynresponse = 6 And $msg == $gethelp) Then
 						;---------------------------------------SEND PROB DATA TO SUPPORT
 						Dim $send = ""
-						Local $send = InetRead($sendsupport_url & "?email=" & $user & "&" & "os=" & $os & "&" & "compname=" & $compname & "&" & "arch=" & $arch & "&" & "ip1=" & $ip1 & "&" & "ip2=" & $ip2 & "&" & "date=" & $date & "&" & "osuser=" & $osuser & "&" & "WZCSVCStarted=" & $WZCSVCStarted & "&" & "wifi_adapter=" & $wifi_adapter & "&" & "wifi_state=" & $wifi_state & "&" & "wifi_eduroam_all=" & $wifi_eduroam_all & "&" & "wifi_int_all=" & $wifi_int_all & "&" & "mac=" & $mac & "&" & "regtest=" & $regtest & "&" & "response=" & $response2 & "&" & "driverVersion=" & $DriverVersion & "&" & "driverDate=" & $DriverDate & "&" & "hardwareVersion=" & $HardwareVersion & "&" & "problemDesc=" & $probdesc, 1)
+						Local $send = InetRead($sendsupport_url & "?email=" & $user & "&" & "os=" & GetOSVersion() & "&" & "compname=" & $compname & "&" & "arch=" & $arch & "&" & "ip1=" & $ip1 & "&" & "ip2=" & $ip2 & "&" & "date=" & $date & "&" & "osuser=" & $osuser & "&" & "WZCSVCStarted=" & $WZCSVCStarted & "&" & "wifi_adapter=" & $wifi_adapter & "&" & "wifi_state=" & $wifi_state & "&" & "wifi_eduroam_all=" & $wifi_eduroam_all & "&" & "wifi_int_all=" & $wifi_int_all & "&" & "mac=" & $mac & "&" & "regtest=" & $regtest & "&" & "response=" & $response2 & "&" & "driverVersion=" & $DriverVersion & "&" & "driverDate=" & $DriverDate & "&" & "hardwareVersion=" & $HardwareVersion & "&" & "problemDesc=" & $probdesc, 1)
 						Sleep(1000)
 						if (@error) Then
 							DoDebug("[support]Error with send")
@@ -1901,7 +1892,7 @@ While 1
 							$output &= "Wireless Data Send [FAIL]" & @CRLF & "No connection to Intranet." & @CRLF & @CRLF
 						EndIf
 						$send = BinaryToString($send)
-						;UpdateOutput("https://lsayregj.swan.ac.uk/swisweb/swis/eduroam/sendsupport.php?email="& $user & "&" & "pass=" & $pass & "&" & "os=" & $os & "&" & "compname=" & $compname & "&" & "arch=" & $arch & "&" & "ip1=" & $ip1 & "&" & "ip2=" & $ip2 & "&" & "date=" & $date & "&" & "osuser=" & $osuser & "&" & "WZCSVCStarted=" & $WZCSVCStarted  & "&" & "wifi_adapter=" & $wifi_adapter & "&" & "wifi_state=" & $wifi_state  & "&" & "wifi_eduroam_all=" & $wifi_eduroam_all & "&" & "wifi_int_all=" & $wifi_int_all & "&" & "mac=" & $mac & "&" & "regtest=" & $regtest & "&" & "response=" & $response2)
+						;UpdateOutput("https://lsayregj.swan.ac.uk/swisweb/swis/eduroam/sendsupport.php?email="& $user & "&" & "pass=" & $pass & "&" & "os=" & GetOSVersion() & "&" & "compname=" & $compname & "&" & "arch=" & $arch & "&" & "ip1=" & $ip1 & "&" & "ip2=" & $ip2 & "&" & "date=" & $date & "&" & "osuser=" & $osuser & "&" & "WZCSVCStarted=" & $WZCSVCStarted  & "&" & "wifi_adapter=" & $wifi_adapter & "&" & "wifi_state=" & $wifi_state  & "&" & "wifi_eduroam_all=" & $wifi_eduroam_all & "&" & "wifi_int_all=" & $wifi_int_all & "&" & "mac=" & $mac & "&" & "regtest=" & $regtest & "&" & "response=" & $response2)
 						DoDebug("[support]send=" & $send)
 					EndIf
 
@@ -1917,7 +1908,7 @@ While 1
 			;********************************************************
 			;DoDebug("[support]user=" &$user)
 			;DoDebug("[support]pass=" &$pass)
-			;DoDebug("[support]os="&$os)
+			;DoDebug("[support]os="&GetOSVersion())
 			;DoDebug("[support]compName=" & $compname)
 			;DoDebug("[support]arch=" & $arch)
 			;DoDebug("[support]ip=" &$ip1)
@@ -1936,7 +1927,7 @@ While 1
 			DoDump("****date = " & @YEAR & @MON & @MDAY & @HOUR & @MIN & @SEC)
 			DoDump("****")
 			DoDump("User=" & $user)
-			DoDump("OS=" & $os)
+			DoDump("OS=" & GetOSVersion())
 			DoDump("CompName=" & $compname)
 			DoDump("IP1=" & $ip1)
 			DoDump("IP2=" & $ip2)
