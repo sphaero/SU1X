@@ -221,7 +221,7 @@ Dim $tryconnect = "no"
 Dim $probdesc = "none"
 
 ;---------------------
-;Arguements
+;Arguments
 $num_arguments = $CmdLine[0] ;is number of parameters
 if ($num_arguments > 0) Then
 	$argument1 = $CmdLine[1] ;is param 1
@@ -229,7 +229,6 @@ if ($num_arguments > 0) Then
 Else
 	$argument1 = 0;
 EndIf
-
 
 ; ---------------------------------------------------------------
 ;Config
@@ -259,6 +258,9 @@ Func iterateConfig($section)
 	EndIf
 EndFunc   ;==>iterateConfig
 
+; ---------------------------------------------------------------
+;Functions
+
 ;return OS string for use in XML file
 Func GetOSVersion()
     Select
@@ -274,10 +276,6 @@ Func GetOSVersion()
         EndIf
     EndSelect
 EndFunc
-
-
-; ---------------------------------------------------------------
-;Functions
 
 Func DoDebug($text)
 	If $DEBUG == 1 And $dump_to_file == 1 Then
@@ -355,6 +353,7 @@ Func Fallback_Connect()
 		EndIf
 
 		if ($run_already > 0) Then
+			DoDebug("Close Wlan API")
 			_Wlan_CloseHandle()
 		EndIf
 
@@ -955,7 +954,7 @@ Func installCertificate($certfile)
 	UpdateOutput("Installed certificate")
 EndFunc   ;==>installCertificate
 
-Func setWirelessProfile($SSID, $os, $hClientHandle, $pGUID)
+Func setWirelessProfile($SSID, $hClientHandle, $pGUID)
 	
 	; try to load xml from filename = "{ssidname}_{os}.xml"
 	$ssidxml = $SSID & "_" & GetOSVersion() & ".xml"
@@ -969,7 +968,7 @@ Func setWirelessProfile($SSID, $os, $hClientHandle, $pGUID)
 		$XMLProfile = FileRead("wireless-7.xml")
 	EndIf
 	
-	if ($os == "WIN7") then
+	if (GetOSVersion() == "WIN7") then
 		; TODO; only active for win7 loop so far
 		UpdateProgress(10);
 
@@ -982,7 +981,7 @@ Func setWirelessProfile($SSID, $os, $hClientHandle, $pGUID)
 			Exit
 		EndIf
 		; End Win7
-	ElseIf($os == "XP") Then
+	ElseIf(GetOSVersion() == "XP") Then
 		;SET THE XP PROFILE
 		UpdateProgress(10);
 		$a_iCall = DllCall($WLANAPIDLL, "dword", "WlanSetProfile", "hwnd", $hClientHandle, "ptr", $pGUID, "dword", 0, "wstr", $XMLProfile, "ptr", 0, "int", 1, "ptr", 0, "dword*", 0)
@@ -997,7 +996,7 @@ Func setWirelessProfile($SSID, $os, $hClientHandle, $pGUID)
 EndFunc   ;==>setWirelessProfile
 
 Func setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $SSID)
-	;perhaps better select statement
+	;perhaps better select statement?
 	if(GetOSVersion() == "WIN7") Then
 		; TODO; only active for win7 loop so far
 		Local $credentials[4]
@@ -1009,7 +1008,7 @@ Func setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $SSID)
 		$setCredentials = _Wlan_SetProfileUserData($hClientHandle, $pGUID, $SSID, $credentials)
 		If @error Then
 			DoDebug("[setup]credential error=" & @ScriptLineNumber & @error & @extended & $setCredentials)
-			UpdateOutput("User/Pass not set")
+			UpdateOutput("Can't set User/Pass")
 		EndIf
 		DoDebug("[reauth]Set Credentials=" & $credentials[2] & $credentials[3] & $setCredentials)
 	ElseIf (GetOSVersion() == "XP") Then
@@ -1019,10 +1018,11 @@ Func setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $SSID)
 		$credentials[1] = "" ;domain
 		$credentials[2] = $user ; username
 		$credentials[3] = $pass ; password
-		DoDebug("[setup]_Wlan_SetProfileUserData" & $hClientHandle & $pGUID & $SSID & $credentials[2])
+		DoDebug("[setup]_Wlan_SetProfileUserData: handle:" & $hClientHandle & " GUID: "& $pGUID &" SSID: "& $SSID &" cred: "&$credentials[2])
 		$setCredentials = _Wlan_SetProfileUserData($hClientHandle, $pGUID, $SSID, $credentials)
 		If @error Then
-			DoDebug("[setup]credential error:" & @ScriptLineNumber & @error & @extended & $setCredentials)
+			DoDebug("[setup]credential error:" & @ScriptLineNumber & "errorcode: "& @error & " ext: " & @extended & " cred: " & $setCredentials)
+			UpdateOutput("Can't set User/Pass")
 		EndIf
 		DoDebug("[setup]Set Credentials=" & $credentials[2] & $credentials[3] & $setCredentials)
 	EndIf
@@ -1050,8 +1050,6 @@ Func connectWireless($SSID)
 	UpdateProgress(10);
 	;ConsoleWrite("Call Error: " & @error & @LF)
 	;ConsoleWrite(_Wlan_GetErrorMessage($a_iCall[0]))
-	Sleep(1000)
-	UpdateOutput("Wireless Profile added...")
 	Sleep(1500)
 	;check if connected, if not, connect to fallback network
 	Local $loop_count = 0
@@ -1085,7 +1083,6 @@ Func connectWireless($SSID)
 				UpdateOutput($SSID & " authenticating...")
 			EndIf
 		Else
-			DoDebug("[setup]Connect failed, retrying")
 			UpdateOutput($SSID & " failed... retrying... ")
 		EndIf
 		Sleep(2000)
@@ -1286,6 +1283,7 @@ While 1
 					EndIf					
 
 					if ($run_already < 1) Then
+						DoDebug("Opening WLAN API")
 						$hClientHandle = _Wlan_OpenHandle()
 						$Enum = _Wlan_EnumInterfaces($hClientHandle)
 					EndIf
@@ -1299,10 +1297,10 @@ While 1
 						ExitLoop (1)
 					EndIf
 					$pGUID = $Enum[0][0]
-					DoDebug("[setup]Adapter=" & $Enum[0][1])
+					DoDebug("[setup]Adapter=" & $Enum[0][1] & " GUID:"&$pGUID)
 
 					;------------------------------------------REMOVING_PROFILES
-					removeProfiles($hClientHandle, $pGUID)
+					;removeProfiles($hClientHandle, $pGUID)
 					
 					$addprofiles = IterateConfig("getprofile")
 					
@@ -1310,9 +1308,10 @@ While 1
 					; the config file under the [getprofile] section.
 					For $profile In $addprofiles
 						UpdateOutput("Adding profile: " & $profile)
-						setWirelessProfile($profile, $os, $hClientHandle, $pGUID)
+						setWirelessProfile($profile, $hClientHandle, $pGUID)
 						; Setting EAP Credentials for this profile
 						if ($showup > 0) Then
+							DoDebug($user & $pass& $hClientHandle& $pGUID& $profile)
 							setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $profile)
 						EndIf
 						; Set priority for this profile based on config value
@@ -1331,6 +1330,7 @@ While 1
 							$probconnect = 1
 						Else
 							UpdateOutput("Connected to "&$profile)
+							ExitLoop
 						EndIf
 					Next 
 					;Don't know where this came from but it's not needed
@@ -1450,7 +1450,7 @@ While 1
 					; the config file under the [getprofile] section.
 					For $profile In $addprofiles
 						UpdateOutput("Adding profile: " & $profile)
-						setWirelessProfile($profile, $os, $hClientHandle, $pGUID)
+						setWirelessProfile($profile, $hClientHandle, $pGUID)
 						; Setting EAP Credentials for this profile
 						if ($showup > 0) Then
 							setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $profile)
