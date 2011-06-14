@@ -263,19 +263,19 @@ EndFunc   ;==>iterateConfig
 
 ;return OS string for use in XML file
 Func GetOSVersion()
-    Select
-    Case StringInStr(@OSVersion, "VISTA", 0)
-        Return "WIN7"
-    Case StringInStr(@OSVersion, "7", 0)
-        Return "WIN7"
-    Case StringInStr(@OSVersion, "XP", 0)
-        If @OSServicePack == "Service Pack 2" Then
-            Return "XPSP2"
-        Else
-            Return "XP"
-        EndIf
-    EndSelect
-EndFunc
+	Select
+		Case StringInStr(@OSVersion, "VISTA", 0)
+			Return "WIN7"
+		Case StringInStr(@OSVersion, "7", 0)
+			Return "WIN7"
+		Case StringInStr(@OSVersion, "XP", 0)
+			If @OSServicePack == "Service Pack 2" Then
+				Return "XPSP2"
+			Else
+				Return "XP"
+			EndIf
+	EndSelect
+EndFunc   ;==>GetOSVersion
 
 Func DoDebug($text)
 	If $DEBUG == 1 And $dump_to_file == 1 Then
@@ -448,7 +448,7 @@ EndFunc   ;==>Fallback_Connect
 
 
 Func doHint()
-	if (GetOSVersion() == "XP" OR GetOSVersion() == "XPSP2") Then
+	if (GetOSVersion() == "XP" Or GetOSVersion() == "XPSP2") Then
 		$y = 200
 		$y2 = 50
 		$y3 = 18
@@ -955,7 +955,7 @@ Func installCertificate($certfile)
 EndFunc   ;==>installCertificate
 
 Func setWirelessProfile($SSID, $hClientHandle, $pGUID)
-	
+
 	; try to load xml from filename = "{ssidname}_{os}.xml"
 	$ssidxml = $SSID & "_" & GetOSVersion() & ".xml"
 	; TODO: import correct profile based on new xml structure
@@ -967,13 +967,13 @@ Func setWirelessProfile($SSID, $hClientHandle, $pGUID)
 		UpdateOutput("Using default ssid settings")
 		$XMLProfile = FileRead("wireless-7.xml")
 	EndIf
-	
-	if (GetOSVersion() == "WIN7") then
+
+	if (GetOSVersion() == "WIN7") Then
 		; TODO; only active for win7 loop so far
 		UpdateProgress(10);
 
 		$a_iCall = DllCall($WLANAPIDLL, "dword", "WlanSetProfile", "hwnd", $hClientHandle, "ptr", $pGUID, "dword", 0, "wstr", $XMLProfile, "ptr", 0, "int", 1, "ptr", 0, "dword*", 0)
-		DoDebug("[setup]setProfile return code (profile1" & $xmlfile & ") =" & $a_iCall[0])
+		DoDebug("[setup]setProfile return code (profile1" & $SSID & ") =" & $a_iCall[0])
 
 		if ($a_iCall[0] > 0) Then
 			UpdateOutput("Error: Return code invalid (WPA2 not supported?)")
@@ -981,7 +981,7 @@ Func setWirelessProfile($SSID, $hClientHandle, $pGUID)
 			Exit
 		EndIf
 		; End Win7
-	ElseIf(GetOSVersion() == "XP") Then
+	ElseIf (GetOSVersion() == "XP") Then
 		;SET THE XP PROFILE
 		UpdateProgress(10);
 		$a_iCall = DllCall($WLANAPIDLL, "dword", "WlanSetProfile", "hwnd", $hClientHandle, "ptr", $pGUID, "dword", 0, "wstr", $XMLProfile, "ptr", 0, "int", 1, "ptr", 0, "dword*", 0)
@@ -997,7 +997,7 @@ EndFunc   ;==>setWirelessProfile
 
 Func setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $SSID)
 	;perhaps better select statement?
-	if(GetOSVersion() == "WIN7") Then
+	if (GetOSVersion() == "WIN7") Then
 		; TODO; only active for win7 loop so far
 		Local $credentials[4]
 		$credentials[0] = "PEAP-MSCHAP" ; EAP method
@@ -1018,17 +1018,18 @@ Func setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $SSID)
 		$credentials[1] = "" ;domain
 		$credentials[2] = $user ; username
 		$credentials[3] = $pass ; password
-		DoDebug("[setup]_Wlan_SetProfileUserData: handle:" & $hClientHandle & " GUID: "& $pGUID &" SSID: "& $SSID &" cred: "&$credentials[2])
+		DoDebug("[setup]_Wlan_SetProfileUserData: handle:" & $hClientHandle & " GUID: " & $pGUID & " SSID: " & $SSID & " cred: " & $credentials[2])
 		$setCredentials = _Wlan_SetProfileUserData($hClientHandle, $pGUID, $SSID, $credentials)
 		If @error Then
-			DoDebug("[setup]credential error:" & @ScriptLineNumber & "errorcode: "& @error & " ext: " & @extended & " cred: " & $setCredentials)
+			DoDebug("[setup]credential error:" & @ScriptLineNumber & "errorcode: " & @error & " ext: " & @extended & " cred: " & $setCredentials)
 			UpdateOutput("Can't set User/Pass")
 		EndIf
 		DoDebug("[setup]Set Credentials=" & $credentials[2] & $credentials[3] & $setCredentials)
 	EndIf
 EndFunc   ;==>setWirelessEAPCreds
 
-Func connectWireless($SSID)
+Func connectWireless($hClientHandle, $pGUID, $SSID)
+	DoDebug("connectWireless " & $SSID)
 	;Tested on XP--------------------------------------WIRELESS CONFIG
 	DoDebug("[setup]Setting windows to manage wifi")
 	$QI = _Wlan_QueryInterface($hClientHandle, $pGUID, 0)
@@ -1044,7 +1045,7 @@ Func connectWireless($SSID)
 	Sleep(5000)
 	;give the adapter time to disconnect...
 	UpdateProgress(10);
-	DoDebug("[setup]Connecting to "&$SSID&"...." & @CRLF)
+	DoDebug("[setup]Connecting to " & $SSID & "...." & @CRLF)
 	_Wlan_Connect($hClientHandle, $pGUID, $SSID)
 	DoDebug("[setup]_Wlan_Connect has finished" & @CRLF)
 	UpdateProgress(10);
@@ -1053,6 +1054,7 @@ Func connectWireless($SSID)
 	Sleep(1500)
 	;check if connected, if not, connect to fallback network
 	Local $loop_count = 0
+	Local $failedConnect = True;
 	While 1
 		;check if connected and got an ip
 		UpdateProgress(5)
@@ -1067,8 +1069,8 @@ Func connectWireless($SSID)
 					UpdateOutput($SSID & " connected with ip=" & $ip1)
 					TrayTip("Connected", "You are now connected to " & $SSID & ".", 30, 1)
 					Sleep(2000)
+					$failedConnect = False
 					ExitLoop
-					Return
 				EndIf
 			EndIf
 
@@ -1089,9 +1091,9 @@ Func connectWireless($SSID)
 		if ($loop_count > 7) Then ExitLoop
 		$loop_count = $loop_count + 1
 	WEnd
-	SetError(1)
+	SetError($failedConnect)
 	Return
-EndFunc
+EndFunc   ;==>connectWireless
 
 
 ;-------------------------------------------------------------------------------
@@ -1273,14 +1275,13 @@ While 1
 				EndIf
 
 				if ($wireless == 1) Then
-					
+
 					; todo: determine service name on OS detection
 					If IsServiceRunning("WZCSVC") == 0 Then
 						startService("WZCSVC", "Wireless Zero Configuration")
-					EndIf					
+					EndIf
 
 					if ($run_already < 1) Then
-						DoDebug("Opening WLAN API")
 						$hClientHandle = _Wlan_OpenHandle()
 						$Enum = _Wlan_EnumInterfaces($hClientHandle)
 					EndIf
@@ -1294,13 +1295,13 @@ While 1
 						ExitLoop (1)
 					EndIf
 					$pGUID = $Enum[0][0]
-					DoDebug("[setup]Adapter=" & $Enum[0][1] & " GUID:"&$pGUID)
+					DoDebug("[setup]Adapter=" & $Enum[0][1] & " GUID:" & $pGUID)
 
 					;------------------------------------------REMOVING_PROFILES
-					;removeProfiles($hClientHandle, $pGUID)
-					
+					removeProfiles($hClientHandle, $pGUID)
+
 					$addprofiles = IterateConfig("getprofile")
-					
+
 					; install wireless profiles for all the SSID's listed in
 					; the config file under the [getprofile] section.
 					For $profile In $addprofiles
@@ -1308,7 +1309,7 @@ While 1
 						setWirelessProfile($profile, $hClientHandle, $pGUID)
 						; Setting EAP Credentials for this profile
 						if ($showup > 0) Then
-							DoDebug($user & $pass& $hClientHandle& $pGUID& $profile)
+							DoDebug($user & $pass & $hClientHandle & $pGUID & $profile)
 							setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $profile)
 						EndIf
 						; Set priority for this profile based on config value
@@ -1316,20 +1317,20 @@ While 1
 						; SetPriority($hClientHandle, $pGUID, $profile)
 						;SetPriority($hClientHandle, $pGUID, $SSID, $priority)
 					Next
-					
+
 					;------------------------------------------------WIRELESS CONFIG
 					$probconnect = 0
 					For $profile In $addprofiles
 						;try to connect to all profiles until we have success!
-						connectWireless($profile)
-						if(@error) Then
-							DoDebug($profile&" failed to connect, trying next")
+						connectWireless($hClientHandle, $pGUID, $profile)
+						if (@error) Then
+							DoDebug($profile & " failed to connect, trying next")
 							$probconnect = 1
 						Else
-							UpdateOutput("Connected to "&$profile)
+							UpdateOutput("Connected to " & $profile)
 							ExitLoop
 						EndIf
-					Next 
+					Next
 					;Don't know where this came from but it's not needed
 					;if (StringCompare("Connected", $retry_state[0], 0) == 0) Then
 					;	if ((StringLen($ip1) == 0) OR (StringInStr($ip1, "169.254.") > 0) OR (StringInStr($ip1, "127.0.0") > 0)) Then
@@ -1372,9 +1373,14 @@ While 1
 			Else
 				;VISTA / 7 CODE*************************************************
 
-				UpdateOutput("Detected " & GetOSVersion() & "/7")
+				UpdateOutput("Detected " & GetOSVersion())
 				#RequireAdmin
 				checkAdminRights()
+
+				;--------------------------------------------INSTALL CERTIFICATE
+				If ($use_cert == 1) Then
+					installCertificate($certificate)
+				EndIf
 
 				If ($wireless == 1) Then
 
@@ -1385,32 +1391,6 @@ While 1
 
 					UpdateOutput("Configuring Wireless Profile...")
 					UpdateProgress(10);
-
-				EndIf
-
-				if ($wired == 1) Then
-
-					If IsServiceRunning("DOT3SVC") == 0 Then
-						startService("DOT3SVC", "Wired LAN Auto Config")
-					EndIf
-
-					;check XML profile files are ok
-					UpdateOutput("Configuring Wired Profile...")
-					UpdateProgress(10);
-					If (FileExists($wired_xmlfile) == 0) Then
-						MsgBox(16, "Error", "Wired Config file missing. Exiting...")
-						Exit
-					EndIf
-
-				EndIf
-
-				;--------------------------------------------INSTALL CERTIFICATE
-				If ($use_cert == 1) Then
-					installCertificate($certificate)
-				EndIf
-
-				;------------------------------------------------WIRELESS CONFIG
-				if ($wireless == 1) Then
 
 					; TODO: clean up run_already loops
 					if ($run_already < 1) Then
@@ -1457,95 +1437,33 @@ While 1
 						; SetPriority($hClientHandle, $pGUID, $profile)
 					Next
 
-					;make sure windows can manage wifi card
-					DoDebug("[setup]Setting windows to manage wifi")
-					$QI = _Wlan_QueryInterface($hClientHandle, $pGUID, 0)
-					;The "use Windows to configure my wireless network settings" checkbox - Needs to be enabled for many funtions to work
-					DoDebug("[setup]Query Interface 0:" & $QI & @CRLF)
-					_Wlan_SetInterface($hClientHandle, $pGUID, 0, "Auto Config Enabled")
-					;Auto Config Enabled or Auto Config Disabled
-					Sleep(1000)
-					UpdateProgress(10);
-					DoDebug("[setup]Disconnecting..." & @CRLF)
-					_Wlan_Disconnect($hClientHandle, $pGUID)
-					DoDebug("[setup]_Wlan_Disconnect has finished" & @CRLF)
-					Sleep(5000)
-					;give the adaptor time to disconnect...
-					UpdateProgress(10);
-					DoDebug("[setup]Connecting..." & @CRLF)
-					_Wlan_Connect($hClientHandle, $pGUID, $SSID)
-					DoDebug("[setup]_Wlan_Connect has finished" & @CRLF)
-					UpdateProgress(10);
-					$run_already = 1
-					Sleep(1500)
-					;check if connected, if not, connect to fallback network
-					Local $loop_count = 0
-					Local $probconnect = 0
-					While 1
-						;check if connected and got an ip
-						UpdateProgress(5)
-						$retry_state = _Wlan_QueryInterface($hClientHandle, $pGUID, 3)
-						if (IsArray($retry_state)) Then
-							if (StringCompare("Connected", $retry_state[0], 0) == 0) Then
-								$ip1 = @IPAddress1
-								if ((StringLen($ip1) == 0) OR (StringInStr($ip1, "169.254.") > 0) OR (StringInStr($ip1, "127.0.0") > 0)) Then
-									UpdateOutput("Getting an IP Address...")
-								Else
-									DoDebug("[setup]Connected")
-									UpdateOutput($SSID & " connected with ip=" & $ip1)
-									TrayTip("Connected", "You are now connected to " & $SSID & ".", 30, 1)
-									Sleep(2000)
-									ExitLoop
-									Exit
-								EndIf
-							EndIf
-
-							if (StringCompare("Disconnected", $retry_state[0], 0) == 0) Then
-								DoDebug("[setup]Disconnected")
-								UpdateOutput($SSID & " disconnected")
-							EndIf
-
-							if (StringCompare("Authenticating", $retry_state[0], 0) == 0) Then
-								DoDebug("[setup]Authenticating...")
-								UpdateOutput($SSID & " authenticating...")
-							EndIf
-						Else
-							DoDebug("[setup]failed... retrying...")
-							UpdateOutput($SSID & " failed... retrying...")
-						EndIf
-
-						Sleep(2000)
-						if ($loop_count > 5) Then ExitLoop
-						$loop_count = $loop_count + 1
-					WEnd
-
-					if (IsArray($retry_state)) Then
-						if (StringCompare("Connected", $retry_state[0], 0) == 0) Then
-							if ((StringLen($ip1) == 0) OR (StringInStr($ip1, "169.254.") > 0) OR (StringInStr($ip1, "127.0.0") > 0)) Then
-								UpdateOutput("Connected but not yet got an IP Address...")
-							EndIf
-						Else
-							UpdateOutput("ERROR:Failed to connected")
+					$probconnect = 0
+					For $profile In $addprofiles
+						;try to connect to all profiles until we have success!
+						connectWireless($hClientHandle, $pGUID, $profile)
+						if (@error) Then
+							DoDebug($profile & " failed to connect, trying next")
 							$probconnect = 1
+						Else
+							UpdateOutput("Connected to " & $profile)
+							ExitLoop
 						EndIf
-					EndIf
-					;code to connect to SSID instead of waiting for user.
-					;
-
-					;ConsoleWrite("Call Error: " & @error & @LF)
-					;ConsoleWrite(_Wlan_GetErrorMessage($a_iCall[0]))
-					Sleep(1000)
-					UpdateProgress(10);
-					UpdateOutput("***Wireless Profile added...")
-					config_proxy()
-					;UpdateProgress(10);
-					;RunWait ("net stop WZCSVC","",@SW_HIDE)
-					;UpdateProgress(10);
-					;RunWait ("net start WZCSVC","",@SW_HIDE)
+					Next
 				EndIf
 
-				;---------------------------------------------------WIRED_CONFIG
 				if ($wired == 1) Then
+
+					If IsServiceRunning("DOT3SVC") == 0 Then
+						startService("DOT3SVC", "Wired LAN Auto Config")
+					EndIf
+
+					;check XML profile files are ok
+					UpdateOutput("Configuring Wired Profile...")
+					UpdateProgress(10);
+					If (FileExists($wired_xmlfile) == 0) Then
+						MsgBox(16, "Error", "Wired Config file missing. Exiting...")
+						Exit
+					EndIf
 					configureWired()
 				EndIf
 
@@ -1569,7 +1487,7 @@ While 1
 			GUICtrlSetData($progressbar1, 100)
 			;Setup all done, display hint if hint set and turn off splash if on
 			if ($USESPLASH == 1) Then SplashOff()
-			if ($hint == 1 AND $probconnect == 0) Then doHint()
+			if ($hint == 1 And $probconnect == 0) Then doHint()
 		EndIf
 		;-------------------------------------------------------------------------
 		; All done...
