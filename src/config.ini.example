@@ -1,0 +1,141 @@
+;**********SU1X CONFIG FILE**********
+;************************************
+;************************************
+;*
+;**********WIRELESS**********
+;*
+[su1x]
+;Wireless 1X configuration. wireless = 1.
+wireless = 1
+;set postion of the profile. 0 = highest priority, descending
+priority = 0
+;Schedule Task for tool popup on reauth (used to catch username resets)
+scheduletask = 1
+;*
+;**********WIRED**********
+;*
+;Wired 1X configuration. set to wired = 1 for wired configuration.
+wired = 0
+;Wired 8021x profile file. Set this to the file exported by getprofile.exe
+wiredXMLfile  = "Wired_Profile.xml"
+;*
+;**********GENERIC CONFIG**********
+;*
+;set Debug to 2 for verbose popup errors messages, or 1 for debug to file. 
+DEBUG=0
+;set hint to 1 for hint box at end of configuration
+hint = 1
+;proxy settings config. 0 = do nothing, 1 = automatically detect settings
+proxy = 0
+;browser reset will restart the IE or FireFox process if 1
+browser_reset = 0
+;*
+;**********GUI/TEXT**********
+;*
+;text to show in Edit box on program start
+startText = "Swansea Wireless Internet Service:"
+;text to show on title bar of application
+title =  "SWIS Eduroam - Setup Tool"
+;example username to display in hint window
+username = "123456@swansea.ac.uk"
+;Show Username / Password text inputs (0 = no)
+showup = 1
+;Show Password tick box
+showtick = 1
+;Network name. General name for the network configuration
+network="Swansea network"
+;*
+;**********NAP/SoH**********
+;*
+;Secure machine will do security checks
+SECURE_MACHINE = 0 
+;Use Splash will display a image at the end of the installation
+USESPLASH = 0
+;Enable NAP
+nap = 0
+;*
+;**********PRINTING**********
+;*
+[print]
+;Printing tab visible
+printing = 0
+;printer name
+printer = "Swansea Uni Wireless"
+;printer model xp
+printer_xp = "HP LaserJet 4000 SERIES PCL6"
+;printer model vista
+printer_vista = "HP LaserJet 4000 SERIES PCL6"
+;printer model win7
+printer_7 = "HP LaserJet P4515 PCL6"
+;printer port 
+printer_port = "http://ccs-iprint1.singleton.swan.ac.uk/ipps/P_iLIS_SWIS"
+;printer message
+printer_message = "When prompted for your username/password, use your wireless username WITHOUT the '@swansea.ac.uk' part."
+;printer message title
+printer_message_title = "Username Password"
+;*
+;**********SUPPORT**********
+;*
+[support]
+;show support tab
+show_support = 1
+;Send Support dept name used when users prompted to agree to send data
+sendsupport_dept = "LIS"
+;send ldap test data (DO NOT USE, EXPERIMENTAL)
+send_ldap = 1
+;send problem form data (DO NOT USE, EXPERIMENTAL)
+send_problem = 1
+;dump support data to file? su1x-dump-<date>.txt
+dump_to_file = 1
+;SUPPORT DATA sent via HTTPS. See support PHP values for guide to build custom PHP scripts to use with data
+;URL to send ldap test (must be HTTPS with valid cert)
+ldap_url = "https://swis.swan.ac.uk/logintest.php"
+;Registration test URL - see web_support.txt file
+regtest_url = "https://swis.swan.ac.uk/regtest.php"
+;Supoprt Email URL - see web_support.txt
+sendsupport_url = "https://swis.swan.ac.uk/sendsupport.php"
+;
+;*
+;**********SSID DATA FOR GET PROFILE AND SU1X TOOL**********
+;*
+[getprofile]
+;The SSID's to work with. Getprofile.exe will export them to XML files
+; ie. eduroam_WIN7.xml, eduroam_XP.xml, eduroam_XPSP2.xml
+ssid1="eduroam"
+ssid2="eduroam-wpa"
+ssid3="eduroam-setup"
+;*
+;**********IMAGES**********
+;*
+[images]
+;location of banner image of size 295x60
+BANNER="images\jrs-header.jpg"
+;location of splash file
+SPLASHFILE="images\big.jpg"
+;image used for win xp in hint window 373x135
+bubblexp= "images\bubble1.jpg"
+;image used for win vista and win7 in hint window 374x59
+bubblevista="images\bubble-vista.jpg"
+;image used for win xp connected successfully
+bubble_xp_connected = "images\bubble-connected-xp.jpg"
+;image used for win 7 connected successfully
+win7_connected = "images\connected-7.jpg"
+;vista connected successfully
+vista_connected = "images\connected-vista.jpg"
+;*
+;**********REMOVE BUTTON**********
+;*
+[remove]
+;new config iteration function requires unique keynames
+ssid1 = "eduroam" 
+ssid2 = "eduroam-wpa"
+ssid3 = "eduroam-setup"
+
+;*
+;**********CERTIFICATES**********
+;*
+[certs]
+;install a cert
+usecert=1
+;destination of certificate file to install (.der or .cer)
+cert="CamfordCA.der"
