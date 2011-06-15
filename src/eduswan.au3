@@ -110,7 +110,6 @@
 #include <GuiListView.au3>
 #include <String.au3>
 
-
 ;-------------------------------------------------------------------------
 ; Global variables and stuff
 
@@ -123,6 +122,10 @@ If (FileExists($CONFIGFILE) == 0) Then
 	MsgBox(16, "Error", "Config file not found.")
 	Exit
 EndIf
+
+; The function Autoit runs whenever Exit is called; 
+; Both on error or after normal operation
+OnAutoItExitRegister("CleanExit")
 
 ;----su1x
 $WZCSVCStarted = 0
@@ -225,7 +228,7 @@ Dim $probdesc = "none"
 $num_arguments = $CmdLine[0] ;is number of parameters
 if ($num_arguments > 0) Then
 	$argument1 = $CmdLine[1] ;is param 1
-	DoDebug("Got argument=" & $argument1)
+	("Got argument=" & $argument1)
 Else
 	$argument1 = 0;
 EndIf
@@ -257,6 +260,11 @@ Func iterateConfig($section)
 		Return $values
 	EndIf
 EndFunc   ;==>iterateConfig
+
+Func cleanExit()
+	; TODO: manifest/uac stuff for win7?
+	
+EndFunc
 
 ; ---------------------------------------------------------------
 ;Functions
@@ -844,8 +852,6 @@ Func enableNAP($id)
 
 	;enable Wireless EAPOL NAP client enfrocement
 	$cmd = "netsh nap client set enforcement id=" & $id & " admin=enable"
-	; alex debug remove
-	MsgBox(4096, "bla", $cmd)
 	UpdateProgress(5);
 	$result = RunWait($cmd, "", @SW_HIDE)
 EndFunc   ;==>enableNAP
@@ -958,18 +964,17 @@ Func setWirelessProfile($SSID, $hClientHandle, $pGUID)
 
 	; try to load xml from filename = "{ssidname}_{os}.xml"
 	$ssidxml = $SSID & "_" & GetOSVersion() & ".xml"
-	; TODO: import correct profile based on new xml structure
 	If FileExists($ssidxml) Then
 		$XMLProfile = FileRead($ssidxml)
 		UpdateOutput("Using ssid settings from " & $ssidxml)
 	Else
-		; Load a default XML Profile
-		UpdateOutput("Using default ssid settings")
-		$XMLProfile = FileRead("wireless-7.xml")
+		UpdateOutput("XML file was invalid or missing")
+		UpdateOutput("Exiting program in 10 seconds..")
+		Sleep(10000)
+		Exit
 	EndIf
 
 	if (GetOSVersion() == "WIN7") Then
-		; TODO; only active for win7 loop so far
 		UpdateProgress(10);
 
 		$a_iCall = DllCall($WLANAPIDLL, "dword", "WlanSetProfile", "hwnd", $hClientHandle, "ptr", $pGUID, "dword", 0, "wstr", $XMLProfile, "ptr", 0, "int", 1, "ptr", 0, "dword*", 0)
