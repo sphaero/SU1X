@@ -113,24 +113,15 @@ If (FileExists($CONFIGFILE) == 0) Then
 	Exit
 EndIf
 
+;----su1x
 $WZCSVCStarted = 0
 $SECURE_MACHINE = IniRead($CONFIGFILE, "su1x", "SECURE_MACHINE", "0")
 $DEBUG = IniRead($CONFIGFILE, "su1x", "DEBUG", "0")
-$wireless = IniRead($CONFIGFILE, "su1x", "wireless", "1")
-$wired = IniRead($CONFIGFILE, "su1x", "wired", "0")
-$network = IniRead($CONFIGFILE, "su1x", "network", "eduroam")
-
+$wireless = IniRead($CONFIGFILE, "su1x", "wireless", "1") ;Do wireless configuration
+$wired = IniRead($CONFIGFILE, "su1x", "wired", "0") ;Do wired configuration
+$network = IniRead($CONFIGFILE, "su1x", "network", "eduroam") ;General name of the network
 $USESPLASH = IniRead($CONFIGFILE, "su1x", "USESPLASH", "0")
 $wired_xmlfile = IniRead($CONFIGFILE, "su1x", "wiredXMLfile", "Wired_Profile.xml")
-$xmlfile = IniRead($CONFIGFILE, "su1x", "xmlfile", "exported.xml")
-$xmlfile_wpa = IniRead($CONFIGFILE, "su1x", "xmlfile_wpa", "exported-wpa.xml")
-$xmlfile_additional = IniRead($CONFIGFILE, "su1x", "xmlfile_additional", "wireless-wpa.xml")
-$tryadditional_profile = IniRead($CONFIGFILE, "su1x", "tryadditional_profile", "0")
-$xmlfile7 = IniRead($CONFIGFILE, "su1x", "xmlfile7", "exported-7.xml")
-$xmlfile7_wpa = IniRead($CONFIGFILE, "su1x", "xmlfile7_wpa", "exported-7-wpa.xml")
-$xmlfilexpsp2 = IniRead($CONFIGFILE, "su1x", "xmlfilexpsp2", "exported-sp2.xml")
-$tryadditional = IniRead($CONFIGFILE, "su1x", "tryadditional", "0")
-$win7 = IniRead($CONFIGFILE, "su1x", "win7", "1")
 $progress_meter = 0
 $startText = IniRead($CONFIGFILE, "su1x", "startText", "SWIS")
 $title = IniRead($CONFIGFILE, "su1x", "title", "SWIS Eduroam - Setup Tool")
@@ -138,13 +129,11 @@ $hint = IniRead($CONFIGFILE, "su1x", "hint", "0")
 $username = IniRead($CONFIGFILE, "su1x", "username", "123456@swansea.ac.uk")
 $proxy = IniRead($CONFIGFILE, "su1x", "proxy", "1")
 $browser_reset = IniRead($CONFIGFILE, "su1x", "browser_reset", "0")
-;$SSID = IniRead($CONFIGFILE, "getprofile", "ssid", "eduroam")
 $priority = IniRead($CONFIGFILE, "getprofile", "priority", "0")
 $nap = IniRead($CONFIGFILE, "su1x", "nap", "0")
 $showup = IniRead($CONFIGFILE, "su1x", "showup", "0")
 $showuptick = IniRead($CONFIGFILE, "su1x", "showtick", "0")
 $scheduletask = IniRead($CONFIGFILE, "su1x", "scheduletask", "0")
-
 
 ;----Printing
 $show_printing = IniRead($CONFIGFILE, "print", "printing", "0")
@@ -1209,7 +1198,7 @@ While 1
 
 			;**************************************************************************************************************
 
-			If (GetOSVersion() == "xp") Then
+			If (GetOSVersion() == "XP") Then
 				;TODO This block can replaced by code using GetOSVersion()
 				UpdateOutput("Detected Windows XP")
 				CloseWindows()
@@ -1281,7 +1270,7 @@ While 1
 						startService("WZCSVC", "Wireless Zero Configuration")
 					EndIf
 
-					if ($run_already < 1) Then
+					If ($run_already < 1) Then
 						$hClientHandle = _Wlan_OpenHandle()
 						$Enum = _Wlan_EnumInterfaces($hClientHandle)
 					EndIf
@@ -1339,13 +1328,12 @@ While 1
 					;Else
 					;	UpdateOutput("ERROR:Failed to connected.")
 					;EndIf
-					UpdateProgress(10);
-					config_proxy()
+					UpdateProgress(10)
 					;UpdateProgress(10);
 					;RunWait ("net stop WZCSVC","",@SW_HIDE)
 					;UpdateProgress(5);
 					;RunWait ("net start WZCSVC","",@SW_HIDE)
-					UpdateProgress(10);
+					UpdateProgress(10)
 					$run_already = 1
 				EndIf
 
@@ -1364,6 +1352,8 @@ While 1
 					EndIf
 					configureWired()
 				EndIf
+
+				config_proxy()
 
 				;-------------------------------------------------NAP/SoH Config
 				if ($nap == 1) Then
@@ -1466,6 +1456,8 @@ While 1
 					EndIf
 					configureWired()
 				EndIf
+
+				config_proxy()
 
 				;-------------------------------------------------NAP/SoH Config
 				if ($nap == 1) Then
@@ -2073,14 +2065,14 @@ While 1
 				;check password
 				if (StringLen($pass) < 1) Then
 					UpdateProgress(100)
-					UpdateOutput("ERROR: Please enter apassword")
+					UpdateOutput("ERROR: Please enter a password")
 					ExitLoop
 				EndIf
 			EndIf
 
 			UpdateProgress(10)
 
-			If (StringInStr(@OSVersion, "7", 0) Or StringInStr(@OSVersion, "VISTA", 0)) Then
+			If (GetOSVersion() = "WIN7" Or GetOSVersion() = "VISTA") Then
 				;Check if the Wireless Zero Configuration Service is running.  If not start it.
 				If IsServiceRunning("WLANSVC") == 0 Then
 					$WZCSVCStarted = 0
@@ -2098,7 +2090,7 @@ While 1
 				EndIf
 			EndIf
 
-			;Check that serviec running before disconnect
+			;Check that service running before disconnect
 			If ($WZCSVCStarted) Then
 				;UpdateOutput("Wireless Service OK")
 			Else
@@ -2163,13 +2155,13 @@ While 1
 						DoDebug("[reauth]credential error:" & @ScriptLineNumber & @error & @extended & $setCredentials)
 					EndIf
 					DoDebug("[reauth]Set Credentials=" & $credentials[2] & $credentials[3] & $setCredentials)
-					if ($tryadditional_profile == 1) Then
-						$setCredentials = _Wlan_SetProfileUserData($hClientHandle, $pGUID, $SSID_Additional, $credentials)
-						If @error Then
-							DoDebug("[reauth]credential additional error:" & @ScriptLineNumber & @error & @extended & $setCredentials)
-						EndIf
-						DoDebug("[reauth]_Wlan_SetProfileUserData" & $hClientHandle & $pGUID & $SSID_Additional & $credentials[2])
-					EndIf
+					;if ($tryadditional_profile == 1) Then
+					;	$setCredentials = _Wlan_SetProfileUserData($hClientHandle, $pGUID, $SSID_Additional, $credentials)
+					;	If @error Then
+					;		DoDebug("[reauth]credential additional error:" & @ScriptLineNumber & @error & @extended & $setCredentials)
+					;	EndIf
+					;	DoDebug("[reauth]_Wlan_SetProfileUserData" & $hClientHandle & $pGUID & $SSID_Additional & $credentials[2])
+					;EndIf
 				EndIf
 				UpdateProgress(30)
 				;set priority of new profile
