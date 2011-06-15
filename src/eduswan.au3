@@ -99,7 +99,6 @@
 #include <GuiListView.au3>
 #include <String.au3>
 
-
 ;-------------------------------------------------------------------------
 ; Global variables and stuff
 
@@ -112,6 +111,10 @@ If (FileExists($CONFIGFILE) == 0) Then
 	MsgBox(16, "Error", "Config file not found.")
 	Exit
 EndIf
+
+; The function Autoit runs whenever Exit is called; 
+; Both on error or after normal operation
+OnAutoItExitRegister("CleanExit")
 
 ;----su1x
 $WZCSVCStarted = 0
@@ -214,7 +217,7 @@ Dim $probdesc = "none"
 $num_arguments = $CmdLine[0] ;is number of parameters
 if ($num_arguments > 0) Then
 	$argument1 = $CmdLine[1] ;is param 1
-	DoDebug("Got argument=" & $argument1)
+	("Got argument=" & $argument1)
 Else
 	$argument1 = 0;
 EndIf
@@ -246,6 +249,11 @@ Func iterateConfig($section)
 		Return $values
 	EndIf
 EndFunc   ;==>iterateConfig
+
+Func cleanExit()
+	; TODO: manifest/uac stuff for win7?
+	
+EndFunc
 
 ; ---------------------------------------------------------------
 ;Functions
