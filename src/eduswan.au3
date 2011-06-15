@@ -42,6 +42,17 @@
 ;
 ; ****** Change log
 ;
+; **15/06/2011
+;	Moved code from install loops to separate functions to remove duplicate code
+;   Load XML files according to SSID and Windows version
+;   Changed adapter detection (Wired)
+;   Removed adapter detection for wireless (it's not needed)
+;   Replaced $os by GetOSVersion()
+;   Added better multiprofile support
+;   Updated getprofile.au3 to reflect changes in SSID handling
+;   Deleted Native_Wifi_Func_V3_1b.au3
+;   Added config.ini.example
+;
 ; **31/05/2011
 ;	Changed cert install command to work with p7b files on request of david sullivan of barnet.ac.uk
 ;
