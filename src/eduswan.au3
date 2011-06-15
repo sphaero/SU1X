@@ -953,8 +953,10 @@ Func setWirelessProfile($SSID, $hClientHandle, $pGUID)
 		UpdateOutput("Using ssid settings from " & $ssidxml)
 	Else
 		; Load a default XML Profile
-		UpdateOutput("Using default ssid settings")
-		$XMLProfile = FileRead("wireless-7.xml")
+		UpdateOutput("XML file was invalid or missing")
+		UpdateOutput("Exiting program in 10 seconds..")
+		Sleep(10000)
+		Exit
 	EndIf
 
 	if (GetOSVersion() == "WIN7") Then
