@@ -841,8 +841,6 @@ Func enableNAP($id)
 
 	;enable Wireless EAPOL NAP client enfrocement
 	$cmd = "netsh nap client set enforcement id=" & $id & " admin=enable"
-	; alex debug remove
-	MsgBox(4096, "bla", $cmd)
 	UpdateProgress(5);
 	$result = RunWait($cmd, "", @SW_HIDE)
 EndFunc   ;==>enableNAP
@@ -955,12 +953,10 @@ Func setWirelessProfile($SSID, $hClientHandle, $pGUID)
 
 	; try to load xml from filename = "{ssidname}_{os}.xml"
 	$ssidxml = $SSID & "_" & GetOSVersion() & ".xml"
-	; TODO: import correct profile based on new xml structure
 	If FileExists($ssidxml) Then
 		$XMLProfile = FileRead($ssidxml)
 		UpdateOutput("Using ssid settings from " & $ssidxml)
 	Else
-		; Load a default XML Profile
 		UpdateOutput("XML file was invalid or missing")
 		UpdateOutput("Exiting program in 10 seconds..")
 		Sleep(10000)
@@ -968,7 +964,6 @@ Func setWirelessProfile($SSID, $hClientHandle, $pGUID)
 	EndIf
 
 	if (GetOSVersion() == "WIN7") Then
-		; TODO; only active for win7 loop so far
 		UpdateProgress(10);
 
 		$a_iCall = DllCall($WLANAPIDLL, "dword", "WlanSetProfile", "hwnd", $hClientHandle, "ptr", $pGUID, "dword", 0, "wstr", $XMLProfile, "ptr", 0, "int", 1, "ptr", 0, "dword*", 0)
