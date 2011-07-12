@@ -303,16 +303,14 @@ EndFunc   ;==>GetOSVersion
 
 Func DoDebug($text)
     If $DEBUG == 1 Then
-        BlockInput(0)
-        SplashOff()
+		;Write to file
+        DoDump($text)
     EndIf
     If $DEBUG == 2 Then
         BlockInput(0)
         SplashOff()
         MsgBox(16, "DEBUG", $text)
     EndIf
-    ;Write to file
-    DoDump($text)
 EndFunc ;==>DoDebug
 
 ;Write text to debug file
@@ -934,11 +932,7 @@ EndFunc   ;==>startService
 Func availableProfile($SSID, $hClientHandle, $pGUID)
 
 	$availableNetworks = _Wlan_GetAvailableNetworkList($hClientHandle, $pGUID, 0)
-	If $DEBUG > 0 Then
-		_ArrayDisplay($availableNetworks)
-	EndIf
 	For $i = 0 to Ubound($availableNetworks) -1
-		MsgBox(1,"net", $availableNetworks[$i][0])
 		If $availableNetworks[$i][0] == $SSID Then
 			Return True
 		EndIf
