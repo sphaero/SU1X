@@ -1337,14 +1337,18 @@ While 1
 					;------------------------------------------------WIRELESS CONFIG
 					$probconnect = 0
 					For $profile In $addprofiles
-						;try to connect to all profiles until we have success!
-						connectWireless($hClientHandle, $pGUID, $profile)
-						if (@error) Then
-							DoDebug($profile & " failed to connect, trying next")
-							$probconnect = 1
+						If availableProfile($profile, $hClientHandle, $pGUID) Then
+							;try to connect to all profiles until we have success!
+							connectWireless($hClientHandle, $pGUID, $profile)
+							if (@error) Then
+								DoDebug($profile & " failed to connect, trying next")
+								$probconnect = 1
+							Else
+								UpdateOutput("Connected to " & $profile)
+								ExitLoop
+							EndIf
 						Else
-							UpdateOutput("Connected to " & $profile)
-							ExitLoop
+							DoDebug($profile & " not available, trying next")
 						EndIf
 					Next
 					;Don't know where this came from but it's not needed
