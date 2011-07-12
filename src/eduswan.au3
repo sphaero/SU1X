@@ -181,7 +181,6 @@ $use_cert = IniRead($CONFIGFILE, "certs", "usecert", "0")
 $show_support = IniRead($CONFIGFILE, "support", "show_support", "0")
 $send_ldap = IniRead($CONFIGFILE, "support", "send_ldap", "0")
 $send_problem = IniRead($CONFIGFILE, "support", "send_problem", "0")
-$dump_to_file = IniRead($CONFIGFILE, "support", "dump_to_file", "0")
 $ldap_url = IniRead($CONFIGFILE, "support", "ldap_url", "0")
 $regtest_url = IniRead($CONFIGFILE, "support", "regtest_url", "0")
 $sendsupport_url = IniRead($CONFIGFILE, "support", "sendsupport_url", "0")
@@ -216,7 +215,6 @@ Dim $run_already
 Dim $loopcheck = 0
 Dim $loopcheck2 = 0
 Dim $NAPAgentOn = 0
-Dim $debugResult
 Dim $showall
 Dim $file
 Dim $filename
@@ -308,13 +306,11 @@ Func DoDebug($text)
     If $DEBUG == 1 Then
         BlockInput(0)
         SplashOff()
-        $debugResult = $debugResult & @CRLF & $text
     EndIf
     If $DEBUG == 2 Then
         BlockInput(0)
         SplashOff()
         MsgBox(16, "DEBUG", $text)
-        $debugResult = $debugResult & @CRLF & $text
     EndIf
     ;Write to file
     $file = FileOpen($filename, 1)
@@ -1135,12 +1131,6 @@ While 1
 		If $msg == $exitb Then
 			_Wlan_EndSession(-1)
 			DoDebug("***Exiting SU1X***")
-			;close file if dump set
-			If ($DEBUG > 0 Or $dump_to_file == 1) Then
-				FileWriteLine($file, @CRLF & "****Tool Debug Output****")
-				FileWriteLine($file, $debugResult)
-				FileClose($file)
-			EndIf
 			Exit
 			ExitLoop
 		EndIf
@@ -1148,12 +1138,6 @@ While 1
 		If $msg == $GUI_EVENT_CLOSE Then
 			_Wlan_EndSession(-1)
 			DoDebug("***Exiting SU1X***")
-			;close file if dump set
-			If ($DEBUG > 0 Or $dump_to_file == 1) Then
-				FileWriteLine($file, @CRLF & "****Tool Debug Output****")
-				FileWriteLine($file, $debugResult)
-				FileClose($file)
-			EndIf
 			Exit
 		EndIf
 
