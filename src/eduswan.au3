@@ -219,19 +219,38 @@ Dim $NAPAgentOn = 0
 Dim $debugResult
 Dim $showall
 Dim $file
+Dim $filename
 Dim $num_arguments = 0
 Dim $tryconnect = "no"
 Dim $probdesc = "none"
 
+
+;------------------------------------------------------------------------------------------------
+;Set up Debugging
+;------------------------------------------------------------------------------------------------
+If ($DEBUG > 0) Then
+    $filename = "su1x-dump-" & @YEAR & @MON & @MDAY & @HOUR & @MIN & @SEC & ".txt"
+    $file = FileOpen($filename, 1)
+    ; Check if file opened for reading OK
+    If ($file == -1) Then
+        MsgBox(16, "DEBUG", "Unable to open debug dump file.:" & $file)
+    EndIf
+Else
+    FileClose($file)
+EndIf
+;------------------------------------------------------------------------------------------------
+
 ;---------------------
-;Arguments
+;Arguments used for scheduled task loading of su1x
 $num_arguments = $CmdLine[0] ;is number of parameters
 if ($num_arguments > 0) Then
-	$argument1 = $CmdLine[1] ;is param 1
-	("Got argument=" & $argument1)
+    $argument1 = $CmdLine[1] ;is param 1
+    DoDebug("Got argument=" & $argument1)
 Else
-	$argument1 = 0;
+    $argument1 = 0;
 EndIf
+
+
 
 ; ---------------------------------------------------------------
 ;Config
@@ -286,27 +305,36 @@ Func GetOSVersion()
 EndFunc   ;==>GetOSVersion
 
 Func DoDebug($text)
-	If $DEBUG == 1 And $dump_to_file == 1 Then
-		BlockInput(0)
-		SplashOff()
-		$debugResult = $debugResult & @CRLF & $text
-	EndIf
-	If $DEBUG == 2 Then
-		BlockInput(0)
-		SplashOff()
-		MsgBox(16, "DEBUG", $text)
-		$debugResult = $debugResult & @CRLF & $text
-	EndIf
-EndFunc   ;==>DoDebug
+    If $DEBUG == 1 Then
+        BlockInput(0)
+        SplashOff()
+        $debugResult = $debugResult & @CRLF & $text
+    EndIf
+    If $DEBUG == 2 Then
+        BlockInput(0)
+        SplashOff()
+        MsgBox(16, "DEBUG", $text)
+        $debugResult = $debugResult & @CRLF & $text
+    EndIf
+    ;Write to file
+    $file = FileOpen($filename, 1)
+    If (NOT ($file = -1)) Then
+        FileWriteLine($file, $text)
+        FileClose($file)
+    EndIf
+EndFunc ;==>DoDebug
 
+;Write text to debug file
 Func DoDump($text)
-	If $dump_to_file == 1 Then
-		BlockInput(0)
-		SplashOff()
-		FileWriteLine($file, $text)
-	EndIf
-
-EndFunc   ;==>DoDump
+    BlockInput(0)
+    SplashOff()
+    ;Write to file
+    $file = FileOpen($filename, 1)
+    If (NOT ($file = -1)) Then
+        FileWriteLine($file, $text)
+        FileClose($file)
+    EndIf
+EndFunc ;==>DoDump
 
 Func _GetMACFromIP($sIP)
 	$ip = "localhost"
@@ -814,17 +842,7 @@ If ($show_support == 0) Then GUICtrlDelete($tab3)
 ;doHint()
 GUISetState(@SW_SHOW)
 ;-----------------------------------------------------------
-;DUMP TO FILE FOR DEBUG
-If ($DEBUG > 0) Then
-	$dump_to_file = 1
-EndIf
-if ($dump_to_file == 1) Then
-	$file = FileOpen("su1x-dump-" & @YEAR & @MON & @MDAY & @HOUR & @MIN & @SEC & ".txt", 1)
-	; Check if file opened for reading OK
-	If ($file == -1) Then
-		DoDebug("Unable to open debug dump file.:" & $file)
-	EndIf
-EndIf
+
 
 ;-------------------------------------------------------------------------------
 ; FUNCTIONS FOR INSTALL PROCEDURES
