@@ -1026,13 +1026,13 @@ Func setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $SSID)
 		$credentials[1] = "" ;domain
 		$credentials[2] = $user ; username
 		$credentials[3] = $pass ; password
-		DoDebug("[setup]_Wlan_SetProfileUserData" & $hClientHandle & $pGUID & $SSID & $credentials[2])
+		DoDebug("[setup]_Wlan_SetProfileUserData" & $hClientHandle & $pGUID & $SSID)
 		$setCredentials = _Wlan_SetProfileUserData($hClientHandle, $pGUID, $SSID, $credentials)
 		If @error Then
 			DoDebug("[setup]credential error=" & @ScriptLineNumber & @error & @extended & $setCredentials)
 			UpdateOutput("Can't set User/Pass")
 		EndIf
-		DoDebug("[reauth]Set Credentials=" & $credentials[2] & $credentials[3] & $setCredentials)
+		DoDebug("[reauth]Set Credentials=" & $credentials[2] & $setCredentials)
 	ElseIf (GetOSVersion() == "XP") Then
 		;it looks like the code is identical to Win7
 		Local $credentials[4]
@@ -1046,7 +1046,7 @@ Func setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $SSID)
 			DoDebug("[setup]credential error:" & @ScriptLineNumber & "errorcode: " & @error & " ext: " & @extended & " cred: " & $setCredentials)
 			UpdateOutput("Can't set User/Pass")
 		EndIf
-		DoDebug("[setup]Set Credentials=" & $credentials[2] & $credentials[3] & $setCredentials)
+		DoDebug("[setup]Set Credentials=" & $credentials[2] & $setCredentials)
 	EndIf
 EndFunc   ;==>setWirelessEAPCreds
 
@@ -1319,7 +1319,6 @@ While 1
 						setWirelessProfile($profile, $hClientHandle, $pGUID)
 						; Setting EAP Credentials for this profile
 						if ($showup > 0) Then
-							DoDebug($user & $pass & $hClientHandle & $pGUID & $profile)
 							setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $profile)
 						EndIf
 						; Set priority for this profile based on config value
