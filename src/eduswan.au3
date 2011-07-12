@@ -1335,8 +1335,11 @@ While 1
 					Next
 
 					;------------------------------------------------WIRELESS CONFIG
+					
+					$reversed = _ArrayReverse($addprofiles)
+					
 					$probconnect = 0
-					For $profile In $addprofiles
+					For $profile In $reversed
 						If availableProfile($profile, $hClientHandle, $pGUID) Then
 							;try to connect to all profiles until we have success!
 							connectWireless($hClientHandle, $pGUID, $profile)
@@ -1458,8 +1461,10 @@ While 1
 						; SetPriority($hClientHandle, $pGUID, $profile)
 					Next
 
+					$reversed = _ArrayReverse($addprofiles)
+
 					$probconnect = 0
-					For $profile In $addprofiles
+					For $profile In $reversed
 						If availableProfile($profile, $hClientHandle, $pGUID) Then
 							;try to connect to all profiles until we have success!
 							connectWireless($hClientHandle, $pGUID, $profile)
