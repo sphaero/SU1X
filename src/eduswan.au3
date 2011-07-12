@@ -865,7 +865,6 @@ Func enableNAP($id)
 	$result = RunWait($cmd, "", @SW_HIDE)
 EndFunc   ;==>enableNAP
 
-
 Func configureWired()
 	DoDebug("[setup]802.3 config install")
 	;Get the mac address and network name
@@ -931,6 +930,21 @@ Func startService($ServiceName, $fullname)
 		DoDebug("[setup]WZC Already Running")
 	EndIf
 EndFunc   ;==>startService
+
+Func availableProfile($SSID, $hClientHandle, $pGUID)
+
+	$availableNetworks = _Wlan_GetAvailableNetworkList($hClientHandle, $pGUID, 0)
+	If $DEBUG > 0 Then
+		_ArrayDisplay($availableNetworks)
+	EndIf
+	For $i = 0 to Ubound($availableNetworks) -1
+		MsgBox(1,"net", $availableNetworks[$i][0])
+		If $availableNetworks[$i][0] == $SSID Then
+			Return True
+		EndIf
+	Next
+	Return False
+EndFunc
 
 Func removeProfiles($hClientHandle, $pGUID)
 
@@ -1442,14 +1456,18 @@ While 1
 
 					$probconnect = 0
 					For $profile In $addprofiles
-						;try to connect to all profiles until we have success!
-						connectWireless($hClientHandle, $pGUID, $profile)
-						if (@error) Then
-							DoDebug($profile & " failed to connect, trying next")
-							$probconnect = 1
+						If availableProfile($profile, $hClientHandle, $pGUID) Then
+							;try to connect to all profiles until we have success!
+							connectWireless($hClientHandle, $pGUID, $profile)
+							if (@error) Then
+								DoDebug($profile & " failed to connect, trying next")
+								$probconnect = 1
+							Else
+								UpdateOutput("Connected to " & $profile)
+								ExitLoop
+							EndIf
 						Else
-							UpdateOutput("Connected to " & $profile)
-							ExitLoop
+							DoDebug($profile & " not available, trying next")
 						EndIf
 					Next
 				EndIf
