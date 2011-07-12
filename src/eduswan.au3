@@ -186,7 +186,6 @@ $regtest_url = IniRead($CONFIGFILE, "support", "regtest_url", "0")
 $sendsupport_url = IniRead($CONFIGFILE, "support", "sendsupport_url", "0")
 $sendsupport_dept = IniRead($CONFIGFILE, "support", "sendsupport_dept", "0")
 
-
 ;---------initialise vairables
 Dim $user
 Dim $pass
@@ -313,11 +312,7 @@ Func DoDebug($text)
         MsgBox(16, "DEBUG", $text)
     EndIf
     ;Write to file
-    $file = FileOpen($filename, 1)
-    If (NOT ($file = -1)) Then
-        FileWriteLine($file, $text)
-        FileClose($file)
-    EndIf
+    DoDump($text)
 EndFunc ;==>DoDebug
 
 ;Write text to debug file
