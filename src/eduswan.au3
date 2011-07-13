@@ -104,6 +104,7 @@
 
 #include "Native_Wifi_Func_V3_3b.au3"
 #include <GUIConstants.au3>
+#include <StaticConstants.au3>
 #include <GuiListView.au3>
 #include <EditConstants.au3>
 #include <WindowsConstants.au3>
@@ -185,6 +186,23 @@ $ldap_url = IniRead($CONFIGFILE, "support", "ldap_url", "0")
 $regtest_url = IniRead($CONFIGFILE, "support", "regtest_url", "0")
 $sendsupport_url = IniRead($CONFIGFILE, "support", "sendsupport_url", "0")
 $sendsupport_dept = IniRead($CONFIGFILE, "support", "sendsupport_dept", "0")
+
+;------Messages
+$msg_head = IniRead($CONFIGFILE, "messages", "head", "Please enter your username and password")
+$msg_user = IniRead($CONFIGFILE, "messages", "user", "Username:")
+$msg_pass1 = IniRead($CONFIGFILE, "messages", "pass1", "Password:")
+$msg_pass2 = IniRead($CONFIGFILE, "messages", "pass2", "Password again:") 
+$msg_show_pass = IniRead($CONFIGFILE, "messages", "show_pass", "Show password")
+$msg_progress = IniRead($CONFIGFILE, "messages", "progress", "Progress")
+$msg_start_check = IniRead($CONFIGFILE, "messages", "start_check", "Diagnostic checks")
+$msg_remove_wifi = IniRead($CONFIGFILE, "messages", "remove_wifi", "Remove wifi configuration")
+$msg_error_user = IniRead($CONFIGFILE, "messages", "error_user", "ERROR: Please enter a username")
+$msg_error_pass = IniRead($CONFIGFILE, "messages", "error_pass", "ERROR: Please enter a password")
+$msg_error_wifiadapter = IniRead($CONFIGFILE, "messages", "error_wifiadapter", "***Error - No wireless adapter found***")
+$msg_setup_complete = IniRead($CONFIGFILE, "messages", "error_setup_complete", "***Setup Complete***")
+$msg_setup_problem = IniRead($CONFIGFILE, "messages", "error_setup_problem", "***POSSIBLE PROBLEM CONNECTING...")
+$msg_error_removeprofiles = IniRead($CONFIGFILE, "messages", "error_removeprofiles", "No wireless profiles to remove found")
+$msg_connectedto = IniRead($CONFIGFILE, "messages", "error_removeprofiles", "You are now connected to ")
 
 ;---------initialise vairables
 Dim $user
@@ -461,8 +479,8 @@ Func Fallback_Connect()
 				Sleep(1000)
 			EndIf
 		Else
-			UpdateOutput("***Wireless Adapter Problem")
-			MsgBox(16, "Error", "No Wireless Adapter Found.")
+			UpdateOutput($msg_error_wifiadapter)
+			MsgBox(16, "Error", $msg_error_wifiadapter)
 		EndIf
 
 	Else
@@ -773,33 +791,42 @@ EndFunc   ;==>alreadyRunning
 ; Start of GUI code
 DoDebug("***Starting SU1X***")
 alreadyRunning()
-GUICreate($title, 294, 310)
+GUISetBkColor(0x00ffff)
+GUICreate($title, 294, 310, $WS_EX_TRANSPARENT)
+$gui_middle = 130
+$gui_space = 30
+$gui_margin = 10
 GUISetBkColor(0xffffff) ;---------------------------------white
 ;GUICtrlCreateLabel("Select Tab Below for Options:", 10, 65)
-$n = GUICtrlCreatePic($BANNER, 0, 0, 294, 54) ;--------pic
-if ($showup > 0) Then
-	$myedit = GUICtrlCreateEdit($startText & @CRLF, 10, 70, 270, 70, $ES_MULTILINE + $ES_AUTOVSCROLL + $WS_VSCROLL + $ES_READONLY)
-	GUICtrlCreateLabel("Username:", 10, 145, 60, 20)
-	GUICtrlCreateLabel("Password:", 165, 145, 60, 20)
-	$userbutton = GUICtrlCreateInput($username, 10, 160, 150, 20)
-	$passbutton = GUICtrlCreateInput("password", 165, 160, 120, 20, BitOR($GUI_SS_DEFAULT_INPUT, $ES_PASSWORD))
-	;$passbutton=GUICtrlCreateInput ("password",165,160,120)
-	GUICtrlSendMsg($passbutton, 0x00CC, 42, 0)
-	;GUICtrlSetData($passbutton, $GUI_FOCUS)
-	if ($showuptick > 0) Then
-		$showPass = GUICtrlCreateCheckbox("Show Password", 170, 185, 100, 20)
-	EndIf
-Else
-	$showuptick = 0
-	;showuptick must be 0 if showup 0, force set to avoid bad config
-	$myedit = GUICtrlCreateEdit($startText & @CRLF, 10, 70, 270, 130, $ES_MULTILINE + $ES_AUTOVSCROLL + $WS_VSCROLL + $ES_READONLY)
-EndIf
-GUICtrlCreateLabel("Progress:", 15, 210, 48, 20)
-$progressbar1 = GUICtrlCreateProgress(65, 210, 200, 20)
+$myedit = GUICtrlCreateEdit("" & @CRLF, $gui_margin, 220, 270, 49, $ES_MULTILINE + $ES_AUTOVSCROLL + $WS_VSCROLL + $ES_READONLY)
 $exitb = GUICtrlCreateButton("Exit", 230, 270, 50)
 ;-------------------------------------------------------------------------
 ;TABS
-$tab = GUICtrlCreateTab(1, 240, 292, 70)
+$tab = GUICtrlCreateTab(1, 56, 292, 254, $WS_CLIPSIBLINGS)
+;--------------------------Setup Tab
+$tab1 = GUICtrlCreateTabItem("Setup")
+$installb = GUICtrlCreateButton("Start Setup", 10, 270, 80)
+if ($showup > 0) Then
+	GUICtrlCreateLabel($msg_head, $gui_margin, 80, 274, 40)
+	GUICtrlCreateLabel($msg_user, $gui_margin, 122, $gui_middle-14, 20, $SS_RIGHT)
+	$userbutton = GUICtrlCreateInput($username, $gui_middle, 120)
+	GUICtrlCreateLabel($msg_pass1, $gui_margin, 142, $gui_middle-14, 20, $SS_RIGHT)
+	GUICtrlCreateLabel($msg_pass2, $gui_margin, 162, $gui_middle-14, 20, $SS_RIGHT)
+	$passbutton = GUICtrlCreateInput("", $gui_middle, 140)
+	$passbutton2 = GUICtrlCreateInput("", $gui_middle, 160)
+	GUICtrlSendMsg($passbutton, 0x00CC, 42, 0)
+	GUICtrlSendMsg($passbutton2, 0x00CC, 42, 0)
+	;if ($showuptick > 0) Then
+	;	$showPass = GUICtrlCreateCheckbox($msg_show_pass , $gui_middle, 160, 100, 20)
+	;EndIf
+Else
+	$showuptick = 0
+	;showuptick must be 0 if showup 0, force set to avoid bad config
+	$myedit = GUICtrlCreateEdit($startText & @CRLF, 10, 70, 270, 130, $ES_MULTILINE + $ES_AUTOVSCROLL + $ES_READONLY)
+EndIf
+;GUICtrlCreateLabel($msg_progress, 15, 200, 48, 20)
+GUICtrlCreateLabel($msg_progress, $gui_margin, 200, 58, 20, $SS_RIGHT)
+$progressbar1 = GUICtrlCreateProgress(75, 198, 205, 20)
 ;only show this tab if argument set by scheduled task
 If (StringInStr($argument1, "auth") > 0) Then
 	;-------------------------Connect Tab
@@ -807,28 +834,27 @@ If (StringInStr($argument1, "auth") > 0) Then
 	$tryconnect = GUICtrlCreateButton("Reconnect to " & $SSID, 60, 270, 150)
 	;GUICtrlSetState(-1, $GUI_SHOW); will be display first
 EndIf
-;--------------------------Setup Tab
-$tab1 = GUICtrlCreateTabItem("Setup")
-$installb = GUICtrlCreateButton("Start Setup", 10, 270, 80)
-$remove_wifi = GUICtrlCreateButton("Remove " & $network, 100, 270, 100)
 ;--------------------------Printing Tab
 $tab2 = GUICtrlCreateTabItem("Printing")
 $print = GUICtrlCreateButton("Setup Printer", 10, 270, 80)
 $remove_printer = GUICtrlCreateButton("Remove Printer", 100, 270, 90)
 ;--------------------------Support Tab
 $tab3 = GUICtrlCreateTabItem("Help")
-$support = GUICtrlCreateButton("Start Checks", 10, 270, 80)
-;$reset = GUICtrlCreateButton("IP Reset", 100, 270, 80)
-$gethelp = GUICtrlCreateButton("Get Help", 100, 270, 80)
+GUICtrlCreateLabel($msg_start_check, $gui_margin, 102, $gui_middle-14, 20, $SS_RIGHT)
+$support = GUICtrlCreateButton("Start Checks", $gui_middle, 100, 100)
+GUICtrlCreateLabel($msg_remove_wifi, $gui_margin, 132, $gui_middle-14, 20, $SS_RIGHT)
+$remove_wifi = GUICtrlCreateButton("Remove " & $network, $gui_middle, 130, 100)
+$gethelp = GUICtrlCreateButton("Get Help", $gui_middle, 160, 100)
 ;--------------------------
 $tab = GUICtrlCreateTabItem("")
+GuiCtrlSetState(-1,$GUI_ONTOP)
 ;--------------------------End of Tabs
+$n = GUICtrlCreatePic($BANNER, 0, 0, 294, 54, $WS_CLIPSIBLINGS) ;--------pic
+;GuiCtrlSetState(-1,$GUI_DISABLE)
+
 If ($show_printing == 0) Then GUICtrlDelete($tab2)
 If ($show_support == 0) Then GUICtrlDelete($tab3)
-;$unInstallb = GUICtrlCreateButton("Remove", 80, 280, 50)
-;$backupb = GUICtrlCreateButton("Check", 160,280,50)
-;-----------------------------------------------------------
-;doHint()
+
 GUISetState(@SW_SHOW)
 ;-----------------------------------------------------------
 
@@ -948,7 +974,7 @@ Func removeProfiles($hClientHandle, $pGUID)
 	$delprofiles = IterateConfig("remove")
 
 	If (UBound($localprofiles) == 0) Then
-		UpdateOutput("No wireless profiles to remove found")
+		UpdateOutput($msg_error_removeprofiles)
 	Else
 		For $delssid In $delprofiles
 			For $localssid In $localprofiles
@@ -1089,7 +1115,7 @@ Func connectWireless($hClientHandle, $pGUID, $SSID)
 				Else
 					DoDebug("[setup]Connected")
 					UpdateOutput($SSID & " connected with ip=" & $ip1)
-					TrayTip("Connected", "You are now connected to " & $SSID & ".", 30, 1)
+					TrayTip("Connected", $msg_connectedto & $SSID & ".", 30, 1)
 					Sleep(2000)
 					$failedConnect = False
 					ExitLoop
@@ -1110,7 +1136,7 @@ Func connectWireless($hClientHandle, $pGUID, $SSID)
 			UpdateOutput($SSID & " failed... retrying... ")
 		EndIf
 		Sleep(2000)
-		if ($loop_count > 7) Then ExitLoop
+		if ($loop_count > 4) Then ExitLoop
 		$loop_count = $loop_count + 1
 	WEnd
 	SetError($failedConnect)
@@ -1125,11 +1151,11 @@ While 1
 	;two while loops so exitlooop can be used to escape button functions
 	While 1
 		$msg = GUIGetMsg()
-		if ($showuptick > 0 And $showup > 0) Then
-			$checkbox = GUICtrlRead($showPass)
-		Else
-			$checkbox = 0
-		EndIf
+		;if ($showuptick > 0 And $showup > 0) Then
+		;	$checkbox = GUICtrlRead($showPass)
+		;Else
+		;	$checkbox = 0
+		;EndIf
 		;-----------------------------------------------------------Exit Tool
 		If $msg == $exitb Then
 			_Wlan_EndSession(-1)
@@ -1146,25 +1172,31 @@ While 1
 
 		;---------------------------------------------------------- Show Password
 		; If checkbox ticked, show password
-		If ($showuptick > 0) Then
-			If $checkbox == $GUI_CHECKED Then
-				if ($loopcheck == 0) Then
-					$pass_tmp = GUICtrlRead($passbutton)
-					GUICtrlSendMsg($passbutton, 0x00CC, 0, 0)
-					GUICtrlSetData($passbutton, $pass_tmp)
-				EndIf
-				$loopcheck = 1
-				$loopcheck2 = 0
-			Else
-				if ($loopcheck2 == 0) Then
-					$pass_tmp = GUICtrlRead($passbutton)
-					GUICtrlSendMsg($passbutton, 0x00CC, 42, 0)
-					GUICtrlSetData($passbutton, $pass_tmp)
-				EndIf
-				$loopcheck = 0
-				$loopcheck2 = 1
-			EndIf
-		EndIf
+		;If ($showuptick > 0) Then
+		;	If $checkbox == $GUI_CHECKED Then
+		;		if ($loopcheck == 0) Then
+		;			$pass_tmp = GUICtrlRead($passbutton)
+		;			GUICtrlSendMsg($passbutton, 0x00CC, 0, 0)
+		;			GUICtrlSetData($passbutton, $pass_tmp)
+		;			$pass_tmp = GUICtrlRead($passbutton2)
+		;			GUICtrlSendMsg($passbutton2, 0x00CC, 0, 0)
+		;			GUICtrlSetData($passbutton2, $pass_tmp)
+		;		EndIf
+		;		$loopcheck = 1
+		;		$loopcheck2 = 0
+		;	Else
+		;		if ($loopcheck2 == 0) Then
+		;			$pass_tmp = GUICtrlRead($passbutton)
+		;			GUICtrlSendMsg($passbutton, 0x00CC, 42, 0)
+		;			GUICtrlSetData($passbutton, $pass_tmp)
+		;			$pass_tmp = GUICtrlRead($passbutton2)
+		;			GUICtrlSendMsg($passbutton2, 0x00CC, 42, 0)
+		;			GUICtrlSetData($passbutton2, $pass_tmp)
+		;		EndIf
+		;		$loopcheck = 0
+		;		$loopcheck2 = 1
+		;	EndIf
+		;EndIf
 
 		;-----------------------------------------------------------
 		;If install button clicked
@@ -1205,14 +1237,14 @@ While 1
 				;check username
 				if (StringInStr($user, "123456") > 0 Or StringLen($user) < 1) Then
 					UpdateProgress(100)
-					UpdateOutput("ERROR: Please enter a username")
+					UpdateOutput($msg_error_user)
 					ExitLoop
 				EndIf
 
 				;check password
 				if (StringLen($pass) < 1) Then
 					UpdateProgress(100)
-					UpdateOutput("ERROR: Please enter a password")
+					UpdateOutput($msg_error_pass)
 					ExitLoop
 				EndIf
 			EndIf
@@ -1300,7 +1332,7 @@ While 1
 						DoDebug("[setup]Enumeration of wlan adapter" & @error)
 						MsgBox(16, "Error", "No Wireless Adapter Found.")
 						;Exit
-						UpdateOutput("***Error - No wireless adapter found***")
+						UpdateOutput($msg_error_wifiadapter)
 						UpdateProgress(100);
 						ExitLoop (1)
 					EndIf
@@ -1340,7 +1372,7 @@ While 1
 								DoDebug($profile & " failed to connect, trying next")
 								$probconnect = 1
 							Else
-								UpdateOutput("Connected to " & $profile)
+								UpdateOutput($msg_connectedto & $profile)
 								ExitLoop
 							EndIf
 						Else
@@ -1425,7 +1457,7 @@ While 1
 						DoDebug("[setup]Enumeration error=" & @error)
 						MsgBox(16, "Error", "No Wireless Adapter Found.")
 						;Exit
-						UpdateOutput("***Error - No wireless adapter found***")
+						UpdateOutput($msg_error_wifiadapter)
 						UpdateProgress(100);
 						ExitLoop (1)
 					EndIf
@@ -1465,7 +1497,7 @@ While 1
 								DoDebug($profile & " failed to connect, trying next")
 								$probconnect = 1
 							Else
-								UpdateOutput("Connected to " & $profile)
+								UpdateOutput($msg_connectedto & $profile)
 								ExitLoop
 							EndIf
 						Else
@@ -1482,7 +1514,7 @@ While 1
 
 					;check XML profile files are ok
 					UpdateOutput("Configuring Wired Profile...")
-					UpdateProgress(10);
+					UpdateProgress(10)
 					If (FileExists($wired_xmlfile) == 0) Then
 						MsgBox(16, "Error", "Wired Config file missing. Exiting...")
 						Exit
@@ -1506,9 +1538,9 @@ While 1
 			EndIf
 
 			;-----------------------------------------------------------END CODE
-			UpdateOutput("***Setup Complete***")
-			if ($probconnect > 0) Then UpdateOutput("***POSSIBLE PROBLEM CONNECTING...")
-			UpdateProgress(10);
+			UpdateOutput($msg_setup_complete)
+			if ($probconnect > 0) Then UpdateOutput($msg_setup_problem)
+			UpdateProgress(10)
 			GUICtrlSetData($progressbar1, 100)
 			;Setup all done, display hint if hint set and turn off splash if on
 			if ($USESPLASH == 1) Then SplashOff()
@@ -1560,14 +1592,14 @@ While 1
 				;check username
 				if (StringInStr($user, "123456") > 0 Or StringLen($user) < 1) Then
 					UpdateProgress(100)
-					UpdateOutput("ERROR: Please enter a username")
+					UpdateOutput($msg_error_user)
 					ExitLoop
 				EndIf
 
 				;check password
 				if (StringLen($pass) < 1) Then
 					UpdateProgress(100)
-					UpdateOutput("ERROR: Please enter a password")
+					UpdateOutput($msg_error_pass)
 					ExitLoop
 				EndIf
 				doGetHelpInfo()
@@ -1686,7 +1718,6 @@ While 1
 					if (@error) Then
 						DoDebug("[support]error interface settings:" & @error & $wifi_state)
 					EndIf
-					;updateoutput("here")
 					$wifi_int_all = $wifi_interface[0] & "," & $wifi_interface[1] & "," & $wifi_interface[2] & "," & $wifi_interface[3] & "," & $wifi_interface[4] & "," & $wifi_interface[5] & "," & $wifi_interface[6] & "," & $wifi_interface[7]
 					if (@error) Then
 						DoDebug("[support]error interface array:" & @error)
@@ -1950,7 +1981,7 @@ While 1
 					DoDebug("[remove]error code on wlan enumeration=" & @error)
 					MsgBox(16, "Error", "No Wireless Adapter Found.")
 					;Exit
-					UpdateOutput("***Error - No wireless adapter found***")
+					UpdateOutput($msg_error_wifiadapter)
 					UpdateProgress(100);
 					ExitLoop (1)
 				EndIf
@@ -2091,14 +2122,14 @@ While 1
 				;check username
 				if (StringInStr($user, "123456") > 0 Or StringLen($user) < 1) Then
 					UpdateProgress(100)
-					UpdateOutput("ERROR: Please enter a username")
+					UpdateOutput($msg_error_user)
 					ExitLoop
 				EndIf
 
 				;check password
 				if (StringLen($pass) < 1) Then
 					UpdateProgress(100)
-					UpdateOutput("ERROR: Please enter a password")
+					UpdateOutput($msg_error_pass)
 					ExitLoop
 				EndIf
 			EndIf
@@ -2166,7 +2197,7 @@ While 1
 
 			UpdateProgress(20)
 			if ($findProfile == False) Then
-				UpdateOutput("***" & $SSID & " Profile missing, plrease run setup again.")
+				UpdateOutput("***" & $SSID & " Profile missing, please run setup again.")
 				UpdateProgress(100)
 				ExitLoop
 			Else
@@ -2309,8 +2340,8 @@ While 1
 			If ($wifi_card) Then
 				$pGUID = $Enum[0][0]
 			Else
-				UpdateOutput("***Wireless Adapter Problem")
-				MsgBox(16, "Error", "No Wireless Adapter Found.")
+				UpdateOutput($msg_error_wifiadapter)
+				MsgBox(16, "Error", $msg_error_wifiadapter)
 				$argument1 = "fail"
 				ExitLoop
 			EndIf
