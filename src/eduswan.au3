@@ -195,7 +195,7 @@ $msg_pass2 = IniRead($CONFIGFILE, "messages", "pass2", "Password again:")
 $msg_show_pass = IniRead($CONFIGFILE, "messages", "show_pass", "Show password")
 $msg_progress = IniRead($CONFIGFILE, "messages", "progress", "Progress")
 $msg_start_check = IniRead($CONFIGFILE, "messages", "start_check", "Diagnostic checks")
-$msg_remove_wifi = IniRead($CONFIGFILE, "messages", "remove_wifi", "Remove wifi configuration")
+$msg_remove_wifi = IniRead($CONFIGFILE, "messages", "remove_wifi", "Remove configurations")
 $msg_error_user = IniRead($CONFIGFILE, "messages", "error_user", "ERROR: Please enter a username")
 $msg_error_pass = IniRead($CONFIGFILE, "messages", "error_pass", "ERROR: Please enter a password")
 $msg_error_passdiff = IniRead($CONFIGFILE, "messages", "error_passdiff", "ERROR: Passwords are different")
@@ -203,7 +203,7 @@ $msg_error_wifiadapter = IniRead($CONFIGFILE, "messages", "error_wifiadapter", "
 $msg_setup_complete = IniRead($CONFIGFILE, "messages", "error_setup_complete", "***Setup Complete***")
 $msg_setup_problem = IniRead($CONFIGFILE, "messages", "error_setup_problem", "***POSSIBLE PROBLEM CONNECTING...")
 $msg_error_removeprofiles = IniRead($CONFIGFILE, "messages", "error_removeprofiles", "No wireless profiles to remove found")
-$msg_connectedto = IniRead($CONFIGFILE, "messages", "error_removeprofiles", "You are now connected to ")
+$msg_connectedto = IniRead($CONFIGFILE, "messages", "error_connectedto", "You are now connected to ")
 
 ;---------initialise vairables
 Dim $user
@@ -904,7 +904,7 @@ Func configureWired()
 	$objWMIService = ObjGet("winmgmts:{impersonationLevel = impersonate}!\\" & $ip & "\root\cimv2")
 	$colItems = $objWMIService.ExecQuery("SELECT * FROM Win32_NetworkAdapter", "WQL", 0x30)
 	$networkcount = 0
-	UpdateProgress(20);
+	UpdateProgress(10);
 	If IsObj($colItems) Then
 		For $objItem In $colItems
 			if ($objItem.AdapterType == "Ethernet 802.3") Then
@@ -927,7 +927,7 @@ Func configureWired()
 					$cmd = "netsh lan add profile filename=""" & $wired_xmlfile & """ interface=""" & $wired_interface & """"
 					DoDebug("[setup]802.3 command=" & $cmd)
 					RunWait($cmd, "", @SW_HIDE)
-					UpdateProgress(20);
+					UpdateProgress(5);
 				EndIf
 			EndIf
 			;ExitLoop
@@ -936,7 +936,7 @@ Func configureWired()
 		DoDebug("[setup]No 802.3 Adapter found!")
 	EndIf
 	UpdateOutput("***Wired 8021x profile added")
-	UpdateProgress(10);
+	UpdateProgress(5);
 EndFunc   ;==>configureWired
 
 Func startService($ServiceName, $fullname)
@@ -988,7 +988,7 @@ Func removeProfiles($hClientHandle, $pGUID)
 				If ($delssid == $localssid) Then
 					RemoveSSID($hClientHandle, $pGUID, $localssid)
 					UpdateOutput("Removed SSID:" & $localssid)
-					UpdateProgress(20);
+					UpdateProgress(2);
 				EndIf
 			Next
 		Next
@@ -1025,7 +1025,7 @@ Func setWirelessProfile($SSID, $hClientHandle, $pGUID)
 	EndIf
 
 	if (GetOSVersion() == "WIN7") Then
-		UpdateProgress(10);
+		UpdateProgress(5);
 
 		$a_iCall = DllCall($WLANAPIDLL, "dword", "WlanSetProfile", "hwnd", $hClientHandle, "ptr", $pGUID, "dword", 0, "wstr", $XMLProfile, "ptr", 0, "int", 1, "ptr", 0, "dword*", 0)
 		DoDebug("[setup]setProfile return code (profile1" & $SSID & ") =" & $a_iCall[0])
@@ -1038,7 +1038,7 @@ Func setWirelessProfile($SSID, $hClientHandle, $pGUID)
 		; End Win7
 	ElseIf (GetOSVersion() == "XP") Then
 		;SET THE XP PROFILE
-		UpdateProgress(10);
+		UpdateProgress(5);
 		$a_iCall = DllCall($WLANAPIDLL, "dword", "WlanSetProfile", "hwnd", $hClientHandle, "ptr", $pGUID, "dword", 0, "wstr", $XMLProfile, "ptr", 0, "int", 1, "ptr", 0, "dword*", 0)
 		DoDebug("[setup]setProfile return code (profile1) =" & $a_iCall[0])
 		if ($a_iCall[0] > 0) Then
@@ -1075,17 +1075,17 @@ Func connectWireless($hClientHandle, $pGUID, $SSID)
 	_Wlan_SetInterface($hClientHandle, $pGUID, 0, "Auto Config Enabled")
 	;Auto Config Enabled or Auto Config Disabled
 	Sleep(1000)
-	UpdateProgress(10);
+	UpdateProgress(5);
 	DoDebug("[setup]Disconnecting..." & @CRLF)
 	_Wlan_Disconnect($hClientHandle, $pGUID)
 	DoDebug("[setup]_Wlan_Disconnect has finished" & @CRLF)
 	Sleep(5000)
 	;give the adapter time to disconnect...
-	UpdateProgress(10);
+	UpdateProgress(5);
 	DoDebug("[setup]Connecting to " & $SSID & "...." & @CRLF)
 	_Wlan_Connect($hClientHandle, $pGUID, $SSID)
 	DoDebug("[setup]_Wlan_Connect has finished" & @CRLF)
-	UpdateProgress(10);
+	UpdateProgress(5);
 	;ConsoleWrite("Call Error: " & @error & @LF)
 	;ConsoleWrite(_Wlan_GetErrorMessage($a_iCall[0]))
 	Sleep(1500)
@@ -1094,7 +1094,7 @@ Func connectWireless($hClientHandle, $pGUID, $SSID)
 	Local $failedConnect = True;
 	While 1
 		;check if connected and got an ip
-		UpdateProgress(5)
+		UpdateProgress(2)
 		$retry_state = _Wlan_QueryInterface($hClientHandle, $pGUID, 3)
 		if (IsArray($retry_state)) Then
 			if (StringCompare("Connected", $retry_state[0], 0) == 0) Then
@@ -1104,7 +1104,7 @@ Func connectWireless($hClientHandle, $pGUID, $SSID)
 				Else
 					DoDebug("[setup]Connected")
 					UpdateOutput($SSID & " connected with ip=" & $ip1)
-					TrayTip("Connected", $msg_connectedto & $SSID & ".", 30, 1)
+					TrayTip("Connected", $msg_connectedto & " " & $SSID, 30, 1)
 					Sleep(2000)
 					$failedConnect = False
 					ExitLoop
@@ -1137,7 +1137,6 @@ Func getUsername()
 
 	;check username
 	if (StringInStr($user, "123456") > 0 Or StringLen($user) < 1) Then
-		UpdateProgress(100)
 		UpdateOutput($msg_error_user)
 		return False
 	Else
@@ -1151,7 +1150,6 @@ Func getPassword()
 	;check password
 	if $pass == $pass2 Then
 		if (StringLen($pass) < 1) Then
-			UpdateProgress(100)
 			UpdateOutput($msg_error_pass)
 			return False
 		Else
@@ -1159,7 +1157,6 @@ Func getPassword()
 		EndIf
 	Else
 		UpdateOutput($msg_error_passdiff)
-		UpdateProgress(100)
 		return False
 	EndIf
 EndFunc  ;==>getPassword
@@ -1261,7 +1258,7 @@ Func doInstallation()
 			MsgBox(16, "Error", "No Wireless Adapter Found.")
 			;Exit
 			UpdateOutput($msg_error_wifiadapter)
-			UpdateProgress(100);
+			UpdateProgress(5);
 			return False
 		EndIf
 		$pGUID = $Enum[0][0]
@@ -1296,7 +1293,7 @@ Func doInstallation()
 					DoDebug($profile & " failed to connect, trying next")
 					$probconnect = 1
 				Else
-					UpdateOutput($msg_connectedto & $profile)
+					UpdateOutput($msg_connectedto & " "& $profile)
 					return False
 				EndIf
 			Else
@@ -1374,11 +1371,13 @@ While 1
 			;-------------------------------------------------------------------------
 			; Start Installation
 			if doInstallation() == False Then
+				GUICtrlSetData($progressbar1, 100)
 				ExitLoop
 			EndIf
 			GUICtrlSetData($progressbar1, 100)
 			;Setup all done, display hint if hint set and turn off splash if on
 			if ($USESPLASH == 1) Then SplashOff()
+			
 			;if ($hint == 1 And $probconnect == 0) Then doHint()
 		EndIf
 		;-------------------------------------------------------------------------
