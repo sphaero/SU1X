@@ -1164,34 +1164,6 @@ While 1
 			ExitLoop
 		EndIf
 
-		;---------------------------------------------------------- Show Password
-		; If checkbox ticked, show password
-		;If ($showuptick > 0) Then
-		;	If $checkbox == $GUI_CHECKED Then
-		;		if ($loopcheck == 0) Then
-		;			$pass_tmp = GUICtrlRead($passbutton)
-		;			GUICtrlSendMsg($passbutton, 0x00CC, 0, 0)
-		;			GUICtrlSetData($passbutton, $pass_tmp)
-		;			$pass_tmp = GUICtrlRead($passbutton2)
-		;			GUICtrlSendMsg($passbutton2, 0x00CC, 0, 0)
-		;			GUICtrlSetData($passbutton2, $pass_tmp)
-		;		EndIf
-		;		$loopcheck = 1
-		;		$loopcheck2 = 0
-		;	Else
-		;		if ($loopcheck2 == 0) Then
-		;			$pass_tmp = GUICtrlRead($passbutton)
-		;			GUICtrlSendMsg($passbutton, 0x00CC, 42, 0)
-		;			GUICtrlSetData($passbutton, $pass_tmp)
-		;			$pass_tmp = GUICtrlRead($passbutton2)
-		;			GUICtrlSendMsg($passbutton2, 0x00CC, 42, 0)
-		;			GUICtrlSetData($passbutton2, $pass_tmp)
-		;		EndIf
-		;		$loopcheck = 0
-		;		$loopcheck2 = 1
-		;	EndIf
-		;EndIf
-
 		;-----------------------------------------------------------
 		;If install button clicked
 		If $msg == $installb Then
