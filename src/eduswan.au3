@@ -198,6 +198,7 @@ $msg_start_check = IniRead($CONFIGFILE, "messages", "start_check", "Diagnostic c
 $msg_remove_wifi = IniRead($CONFIGFILE, "messages", "remove_wifi", "Remove wifi configuration")
 $msg_error_user = IniRead($CONFIGFILE, "messages", "error_user", "ERROR: Please enter a username")
 $msg_error_pass = IniRead($CONFIGFILE, "messages", "error_pass", "ERROR: Please enter a password")
+$msg_error_passdiff = IniRead($CONFIGFILE, "messages", "error_passdiff", "ERROR: Passwords are different")
 $msg_error_wifiadapter = IniRead($CONFIGFILE, "messages", "error_wifiadapter", "***Error - No wireless adapter found***")
 $msg_setup_complete = IniRead($CONFIGFILE, "messages", "error_setup_complete", "***Setup Complete***")
 $msg_setup_problem = IniRead($CONFIGFILE, "messages", "error_setup_problem", "***POSSIBLE PROBLEM CONNECTING...")
@@ -575,6 +576,7 @@ EndFunc   ;==>UpdateProgress
 
 ;output to edit box
 Func UpdateOutput($output)
+	DoDebug($output)
 	GUICtrlSetData($myedit, $output & @CRLF, @CRLF)
 EndFunc   ;==>UpdateOutput
 
@@ -1049,36 +1051,18 @@ Func setWirelessProfile($SSID, $hClientHandle, $pGUID)
 EndFunc   ;==>setWirelessProfile
 
 Func setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $SSID)
-	;perhaps better select statement?
-	if (GetOSVersion() == "WIN7") Then
-		; TODO; only active for win7 loop so far
-		Local $credentials[4]
-		$credentials[0] = "PEAP-MSCHAP" ; EAP method
-		$credentials[1] = "" ;domain
-		$credentials[2] = $user ; username
-		$credentials[3] = $pass ; password
-		DoDebug("[setup]_Wlan_SetProfileUserData" & $hClientHandle & $pGUID & $SSID)
-		$setCredentials = _Wlan_SetProfileUserData($hClientHandle, $pGUID, $SSID, $credentials)
-		If @error Then
-			DoDebug("[setup]credential error=" & @ScriptLineNumber & @error & @extended & $setCredentials)
-			UpdateOutput("Can't set User/Pass")
-		EndIf
-		DoDebug("[reauth]Set Credentials=" & $credentials[2] & $setCredentials)
-	ElseIf (GetOSVersion() == "XP") Then
-		;it looks like the code is identical to Win7
-		Local $credentials[4]
-		$credentials[0] = "PEAP-MSCHAP" ; EAP method
-		$credentials[1] = "" ;domain
-		$credentials[2] = $user ; username
-		$credentials[3] = $pass ; password
-		DoDebug("[setup]_Wlan_SetProfileUserData: handle:" & $hClientHandle & " GUID: " & $pGUID & " SSID: " & $SSID & " cred: " & $credentials[2])
-		$setCredentials = _Wlan_SetProfileUserData($hClientHandle, $pGUID, $SSID, $credentials)
-		If @error Then
-			DoDebug("[setup]credential error:" & @ScriptLineNumber & "errorcode: " & @error & " ext: " & @extended & " cred: " & $setCredentials)
-			UpdateOutput("Can't set User/Pass")
-		EndIf
-		DoDebug("[setup]Set Credentials=" & $credentials[2] & $setCredentials)
+	Local $credentials[4]
+	$credentials[0] = "PEAP-MSCHAP" ; EAP method
+	$credentials[1] = "" ;domain
+	$credentials[2] = $user ; username
+	$credentials[3] = $pass ; password
+	DoDebug("[setup]_Wlan_SetProfileUserData" & $hClientHandle & $pGUID & $SSID)
+	$setCredentials = _Wlan_SetProfileUserData($hClientHandle, $pGUID, $SSID, $credentials)
+	If @error Then
+		DoDebug("[setup]credential error=" & @ScriptLineNumber & @error & @extended & $setCredentials)
+		UpdateOutput("Can't set User/Pass")
 	EndIf
+	DoDebug("[reauth]Set Credentials=" & $credentials[2] & $setCredentials)
 EndFunc   ;==>setWirelessEAPCreds
 
 Func connectWireless($hClientHandle, $pGUID, $SSID)
@@ -1148,6 +1132,218 @@ Func connectWireless($hClientHandle, $pGUID, $SSID)
 	Return
 EndFunc   ;==>connectWireless
 
+Func getUsername()
+	$user = GUICtrlRead($userbutton)
+
+	;check username
+	if (StringInStr($user, "123456") > 0 Or StringLen($user) < 1) Then
+		UpdateProgress(100)
+		UpdateOutput($msg_error_user)
+		return False
+	Else
+		Return $user
+	EndIf
+EndFunc ;==>getUsername
+
+Func getPassword()
+	$pass = GUICtrlRead($passbutton)
+	$pass2 = GUICtrlRead($passbutton2)
+	;check password
+	if $pass == $pass2 Then
+		if (StringLen($pass) < 1) Then
+			UpdateProgress(100)
+			UpdateOutput($msg_error_pass)
+			return False
+		Else
+			Return $pass
+		EndIf
+	Else
+		UpdateOutput($msg_error_passdiff)
+		UpdateProgress(100)
+		return False
+	EndIf
+EndFunc  ;==>getPassword
+
+Func doXpChecks()
+	UpdateOutput("Found Service Pack 2")
+	;use xml file with no valid cert setup
+	;TODO remove this
+	;$xmlfile = $xmlfilexpsp2
+	;Check if hotfix already installed
+	RegRead("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\HotFix\KB918997", "Installed")
+	If @error Then
+		DoDebug("[setup] hotfix" & @error)
+		UpdateOutput("No Hotfix found")
+		;run hotfix
+		If (MsgBox(16, "Windows Update", "The Microsoft update Service Pack 3 is required for this tool to work. Please run Windows Updates or visit http://update.microsoft.com in order to get the updates. You will then need to rerun the tool.") == 6) Then
+			$msxml = DllOpen("msxml6.dll")
+			if ($msxml = -1) Then
+				DoDebug("No MSXML 6 found")
+				UpdateOutput("Exiting as Windows Updates are required.")
+				return False
+				;install it
+				;RunWait("msiexec /qn /i msxml6.msi")
+				;RunWait("msiexec /i msxml6.msi")
+				;UpdateOutput("msxml6 instlalled")
+			EndIf
+			;UpdateOutput("Installing hot fix. Please wait...")
+			;ShellExecuteWait("WindowsXP-KB918997-v6-x86-ENU.exe","/quiet /norestart")
+			;ShellExecuteWait("WindowsXP-KB918997-v6-x86-ENU.exe","/norestart")
+			;	UpdateOutput("installed hotfix")
+		Else
+			Return True
+		EndIf
+		;Once update installed reboot required
+		;If (MsgBox(4,"Reboot","Update installed! You must now restart and rerun the tool.")== 6) Then
+		;	shutdown(2)
+		;	Else
+		;	MsgBox(16,"Exiting","Setup is now exiting. Please rerun this tool once you have rebooted")
+		;	Exit
+	EndIf
+EndFunc  ;==>doXpChecks
+
+Func doInstallation()
+	GUICtrlSetData($progressbar1, 0)
+	$progress_meter = 0;
+	;Check OS version
+	select 
+		case getOSVersion() == "VISTA"
+			#RequireAdmin
+			checkAdminRights()
+			If IsServiceRunning("WLANSVC") == 0 Then
+				startService("WLANSVC", "Wireless Zero Configuration")
+			EndIf
+		case getOSVersion() == "WIN7"
+			#RequireAdmin
+			checkAdminRights()
+			If IsServiceRunning("WLANSVC") == 0 Then
+				startService("WLANSVC", "Wireless Zero Configuration")
+			EndIf
+		case getOSVersion() == "XP"
+			checkAdminRights()
+			If IsServiceRunning("WZCSVC") == 0 Then
+				startService("WZCSVC", "Wireless Zero Configuration")
+			EndIf
+		case getOSVersion() == "XPSP2"
+			checkAdminRights()
+			doXpSp2Checks()
+		case Else
+			UpdateOutput("Unkown Windows version")
+			Return False
+	EndSelect	
+		
+	;Get Username from gui
+	$user = getUsername()
+	if $user == False Then
+		return False
+	EndIf
+			
+	;Get Password from gui
+	$pass = getPassword()
+	if $pass == False Then
+		return False
+	EndIf
+	
+	;**************************************************************************************************************
+	;--------------------------------------------INSTALL CERTIFICATE
+	If ($use_cert == 1) Then
+		installCertificate($certificate)
+	EndIf
+	;--------------------------------------------SETUP WIRELESS
+	if ($wireless == 1) Then
+		If ($run_already < 1) Then
+			$hClientHandle = _Wlan_OpenHandle()
+			$Enum = _Wlan_EnumInterfaces($hClientHandle)
+		EndIf
+
+		If (UBound($Enum) == 0) Then
+			DoDebug("[setup]Enumeration of wlan adapter" & @error)
+			MsgBox(16, "Error", "No Wireless Adapter Found.")
+			;Exit
+			UpdateOutput($msg_error_wifiadapter)
+			UpdateProgress(100);
+			return False
+		EndIf
+		$pGUID = $Enum[0][0]
+		DoDebug("[setup]Adapter=" & $Enum[0][1] & " GUID:" & $pGUID)
+
+		;------------------------------------------REMOVING_PROFILES
+		removeProfiles($hClientHandle, $pGUID)
+		
+		; install wireless profiles for all the SSID's listed in
+		; the config file under the [getprofile] section.
+		$addprofiles = IterateConfig("getprofile")
+		For $profile In $addprofiles
+			UpdateOutput("Adding profile: " & $profile)
+			setWirelessProfile($profile, $hClientHandle, $pGUID)
+			; Setting EAP Credentials for this profile
+			setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $profile)
+			; Set priority for this profile based on config value
+			; TODO: make tuple for ssidname,priority values
+			; SetPriority($hClientHandle, $pGUID, $profile)
+			;SetPriority($hClientHandle, $pGUID, $SSID, $priority)
+		Next
+
+		;------------------------------------------------CONNECT ATTEMPT
+		_ArrayReverse($addprofiles)
+				
+		$probconnect = 0
+		For $profile In $addprofiles
+			If availableProfile($profile, $hClientHandle, $pGUID) Then
+				;try to connect to all profiles until we have success!
+				connectWireless($hClientHandle, $pGUID, $profile)
+				if (@error) Then
+					DoDebug($profile & " failed to connect, trying next")
+					$probconnect = 1
+				Else
+					UpdateOutput($msg_connectedto & $profile)
+					return False
+				EndIf
+			Else
+				DoDebug($profile & " not available, trying next")
+			EndIf
+		Next
+		UpdateProgress(10)
+		$run_already = 1
+	EndIf
+	;--------------------------------------------SETUP WIRED
+	If ($wired == 1) Then
+
+		If IsServiceRunning("DOT3SVC") == 0 Then
+			startService("DOT3SVC", "Wired LAN Auto Config")
+		EndIf
+
+		;check XML profile files are ok
+		UpdateOutput("Configuring Wired Profile...")
+		UpdateProgress(10);
+		If (FileExists($wired_xmlfile) == 0) Then
+			MsgBox(16, "Error", "Wired Config file missing. Exiting...")
+			Exit
+		EndIf
+		configureWired()
+	EndIf
+	;--------------------------------------------SETUP Proxy
+	config_proxy()
+	;-------------------------------------------------NAP/SoH Config
+	if ($nap == 1) Then
+		if getOSVersion() == XP Then
+			enableNAP(79620)
+		Else
+			enableNAP(79623)
+		EndIf
+	EndIf
+	
+	;install scheduled task
+	if ($scheduletask == 1) Then
+		setScheduleTask();
+		UpdateOutput("Added scheduled task")
+	EndIf
+	;-----------------------------------------------------------END CODE
+	UpdateOutput($msg_setup_complete)
+	if ($probconnect > 0) Then UpdateOutput($msg_setup_problem)
+	UpdateProgress(10)
+	return True
+EndFunc   ;==>startInstallation
 ;-------------------------------------------------------------------------------
 ; START MAIN LOOP
 ;-------------------------------------------------------------------------------
@@ -1177,346 +1373,16 @@ While 1
 			If ($USESPLASH == 1) Then SplashImageOn("Installing", $SPLASHFILE, 1965, 1895, 0, 0, 1)
 			;-------------------------------------------------------------------------
 			; Start Installation
-			GUICtrlSetData($progressbar1, 0)
-			$progress_meter = 0;
-			UpdateOutput("***Starting Installation***")
-
-			;Check OS version
-			If (StringInStr(@OSVersion, "VISTA", 0)) Then
-				#RequireAdmin
+			if doInstallation() == False Then
+				ExitLoop
 			EndIf
-
-			If (StringInStr(@OSVersion, "WIN7", 0)) Then
-				#RequireAdmin
-				checkAdminRights()
-			EndIf
-
-			If (StringInStr(@OSVersion, "XP", 0)) Then
-				$sp = 0
-			EndIf
-
-			If ($showup > 0) Then
-				;read in username and password
-				$user = GUICtrlRead($userbutton)
-				$pass = GUICtrlRead($passbutton)
-
-				;check username
-				if (StringInStr($user, "123456") > 0 Or StringLen($user) < 1) Then
-					UpdateProgress(100)
-					UpdateOutput($msg_error_user)
-					ExitLoop
-				EndIf
-
-				;check password
-				if (StringLen($pass) < 1) Then
-					UpdateProgress(100)
-					UpdateOutput($msg_error_pass)
-					ExitLoop
-				EndIf
-			EndIf
-
-			;**************************************************************************************************************
-
-			If (GetOSVersion() == "XP") Then
-				;TODO This block can replaced by code using GetOSVersion()
-				UpdateOutput("Detected Windows XP")
-				CloseWindows()
-				UpdateProgress(10);
-				;Check for Service Pack 2
-				If @OSServicePack == "Service Pack 2" Then
-					UpdateOutput("Found Service Pack 2")
-					;use xml file with no valid cert setup
-					;TODO remove this
-					;$xmlfile = $xmlfilexpsp2
-					;Check if hotfix already installed
-					RegRead("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\HotFix\KB918997", "Installed")
-					If @error Then
-						DoDebug("[setup] hotfix" & @error)
-						UpdateOutput("No Hotfix found")
-						;run hotfix
-						If (MsgBox(16, "Windows Update", "The Microsoft update Service Pack 3 is required for this tool to work. Please run Windows Updates or visit http://update.microsoft.com in order to get the updates. You will then need to rerun the tool.") == 6) Then
-							$msxml = DllOpen("msxml6.dll")
-							if ($msxml = -1) Then
-								UpdateOutput("No MSXML 6 found")
-								UpdateOutput("Exiting as Windows Updates are required.")
-								ExitLoop
-								;install it
-								;RunWait("msiexec /qn /i msxml6.msi")
-								;RunWait("msiexec /i msxml6.msi")
-								;UpdateOutput("msxml6 instlalled")
-							EndIf
-							;UpdateOutput("Installing hot fix. Please wait...")
-							;ShellExecuteWait("WindowsXP-KB918997-v6-x86-ENU.exe","/quiet /norestart")
-							;ShellExecuteWait("WindowsXP-KB918997-v6-x86-ENU.exe","/norestart")
-							;	UpdateOutput("installed hotfix")
-						Else
-							Exit
-						EndIf
-						;Once update installed reboot required
-						;If (MsgBox(4,"Reboot","Update installed! You must now restart and rerun the tool.")== 6) Then
-						;	shutdown(2)
-						;	Else
-						;	MsgBox(16,"Exiting","Setup is now exiting. Please rerun this tool once you have rebooted")
-						;	Exit
-						;	EndIf
-					Else
-						UpdateOutput("Hotfix already instaled")
-					EndIf
-					$sp = 2
-				EndIf
-				;Check for Service Pack 3
-				If @OSServicePack == "Service Pack 3" Then
-					UpdateOutput("Found Service Pack 3")
-					$sp = 3
-				EndIf
-				If $sp == 0 Then
-					MsgBox(16, "Updates Needed", "You must have at least Service Pack 2 installed. Please run Windows Update.")
-					Exit
-				EndIf
-
-				UpdateProgress(10);
-				checkAdminRights()
-
-				;--------------------------------------------INSTALL CERTIFICATE
-				If ($use_cert == 1) Then
-					installCertificate($certificate)
-				EndIf
-
-				if ($wireless == 1) Then
-
-					; todo: determine service name on OS detection
-					If IsServiceRunning("WZCSVC") == 0 Then
-						startService("WZCSVC", "Wireless Zero Configuration")
-					EndIf
-
-					If ($run_already < 1) Then
-						$hClientHandle = _Wlan_OpenHandle()
-						$Enum = _Wlan_EnumInterfaces($hClientHandle)
-					EndIf
-
-					If (UBound($Enum) == 0) Then
-						DoDebug("[setup]Enumeration of wlan adapter" & @error)
-						MsgBox(16, "Error", "No Wireless Adapter Found.")
-						;Exit
-						UpdateOutput($msg_error_wifiadapter)
-						UpdateProgress(100);
-						ExitLoop (1)
-					EndIf
-					$pGUID = $Enum[0][0]
-					DoDebug("[setup]Adapter=" & $Enum[0][1] & " GUID:" & $pGUID)
-
-					;------------------------------------------REMOVING_PROFILES
-					removeProfiles($hClientHandle, $pGUID)
-
-					$addprofiles = IterateConfig("getprofile")
-
-					; install wireless profiles for all the SSID's listed in
-					; the config file under the [getprofile] section.
-					For $profile In $addprofiles
-						UpdateOutput("Adding profile: " & $profile)
-						setWirelessProfile($profile, $hClientHandle, $pGUID)
-						; Setting EAP Credentials for this profile
-						if ($showup > 0) Then
-							setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $profile)
-						EndIf
-						; Set priority for this profile based on config value
-						; TODO: make tuple for ssidname,priority values
-						; SetPriority($hClientHandle, $pGUID, $profile)
-						;SetPriority($hClientHandle, $pGUID, $SSID, $priority)
-					Next
-
-					;------------------------------------------------WIRELESS CONFIG
-					
-					_ArrayReverse($addprofiles)
-					
-					$probconnect = 0
-					For $profile In $addprofiles
-						If availableProfile($profile, $hClientHandle, $pGUID) Then
-							;try to connect to all profiles until we have success!
-							connectWireless($hClientHandle, $pGUID, $profile)
-							if (@error) Then
-								DoDebug($profile & " failed to connect, trying next")
-								$probconnect = 1
-							Else
-								UpdateOutput($msg_connectedto & $profile)
-								ExitLoop
-							EndIf
-						Else
-							DoDebug($profile & " not available, trying next")
-						EndIf
-					Next
-					;Don't know where this came from but it's not needed
-					;if (StringCompare("Connected", $retry_state[0], 0) == 0) Then
-					;	if ((StringLen($ip1) == 0) OR (StringInStr($ip1, "169.254.") > 0) OR (StringInStr($ip1, "127.0.0") > 0)) Then
-					;		UpdateOutput("Connected but not yet got an IP Address...")
-					;	EndIf
-					;Else
-					;	UpdateOutput("ERROR:Failed to connected.")
-					;EndIf
-					UpdateProgress(10)
-					;UpdateProgress(10);
-					;RunWait ("net stop WZCSVC","",@SW_HIDE)
-					;UpdateProgress(5);
-					;RunWait ("net start WZCSVC","",@SW_HIDE)
-					UpdateProgress(10)
-					$run_already = 1
-				EndIf
-
-				If ($wired == 1) Then
-
-					If IsServiceRunning("DOT3SVC") == 0 Then
-						startService("DOT3SVC", "Wired LAN Auto Config")
-					EndIf
-
-					;check XML profile files are ok
-					UpdateOutput("Configuring Wired Profile...")
-					UpdateProgress(10);
-					If (FileExists($wired_xmlfile) == 0) Then
-						MsgBox(16, "Error", "Wired Config file missing. Exiting...")
-						Exit
-					EndIf
-					configureWired()
-				EndIf
-
-				config_proxy()
-
-				;-------------------------------------------------NAP/SoH Config
-				if ($nap == 1) Then
-					enableNAP(79620)
-				EndIf
-				;END OF XP CODE*************************************************
-			Else
-				;VISTA / 7 CODE*************************************************
-
-				UpdateOutput("Detected " & GetOSVersion())
-				#RequireAdmin
-				checkAdminRights()
-
-				;--------------------------------------------INSTALL CERTIFICATE
-				If ($use_cert == 1) Then
-					installCertificate($certificate)
-				EndIf
-
-				If ($wireless == 1) Then
-
-					; todo: determine service name on OS detection
-					If IsServiceRunning("WLANSVC") == 0 Then
-						startService("WLANSVC", "Wireless Zero Configuration")
-					EndIf
-
-					UpdateOutput("Configuring Wireless Profile...")
-					UpdateProgress(10);
-
-					; TODO: clean up run_already loops
-					if ($run_already < 1) Then
-						$hClientHandle = _Wlan_OpenHandle()
-						$Enum = _Wlan_EnumInterfaces($hClientHandle)
-					EndIf
-
-					if ($run_already > 0) Then
-						_Wlan_CloseHandle()
-						$hClientHandle = _Wlan_OpenHandle()
-						$Enum = _Wlan_EnumInterfaces($hClientHandle)
-					EndIf
-
-					If (UBound($Enum) == 0) Then
-						DoDebug("[setup]Enumeration error=" & @error)
-						MsgBox(16, "Error", "No Wireless Adapter Found.")
-						;Exit
-						UpdateOutput($msg_error_wifiadapter)
-						UpdateProgress(100);
-						ExitLoop (1)
-					EndIf
-					$pGUID = $Enum[0][0]
-					DoDebug("[setup] adpter=" & $Enum[0][1])
-
-					;------------------------------------------REMOVING_PROFILES
-
-					removeProfiles($hClientHandle, $pGUID)
-
-					;-------------------------------------------SETTING_PROFILES
-
-					$addprofiles = IterateConfig("getprofile")
-
-					; install wireless profiles for all the SSID's listed in
-					; the config file under the [getprofile] section.
-					For $profile In $addprofiles
-						UpdateOutput("Adding profile: " & $profile)
-						setWirelessProfile($profile, $hClientHandle, $pGUID)
-						; Setting EAP Credentials for this profile
-						if ($showup > 0) Then
-							setWirelessEAPCreds($user, $pass, $hClientHandle, $pGUID, $profile)
-						EndIf
-						; Set priority for this profile based on config value
-						; TODO: make tuple for ssidname,priority values
-						; SetPriority($hClientHandle, $pGUID, $profile)
-					Next
-
-					_ArrayReverse($addprofiles)
-
-					$probconnect = 0
-					For $profile In $addprofiles
-						If availableProfile($profile, $hClientHandle, $pGUID) Then
-							;try to connect to all profiles until we have success!
-							connectWireless($hClientHandle, $pGUID, $profile)
-							if (@error) Then
-								DoDebug($profile & " failed to connect, trying next")
-								$probconnect = 1
-							Else
-								UpdateOutput($msg_connectedto & $profile)
-								ExitLoop
-							EndIf
-						Else
-							DoDebug($profile & " not available, trying next")
-						EndIf
-					Next
-				EndIf
-
-				if ($wired == 1) Then
-
-					If IsServiceRunning("DOT3SVC") == 0 Then
-						startService("DOT3SVC", "Wired LAN Auto Config")
-					EndIf
-
-					;check XML profile files are ok
-					UpdateOutput("Configuring Wired Profile...")
-					UpdateProgress(10)
-					If (FileExists($wired_xmlfile) == 0) Then
-						MsgBox(16, "Error", "Wired Config file missing. Exiting...")
-						Exit
-					EndIf
-					configureWired()
-				EndIf
-
-				config_proxy()
-
-				;-------------------------------------------------NAP/SoH Config
-				if ($nap == 1) Then
-					enableNAP(79623)
-				EndIf
-
-				;install scheduled task
-				if ($scheduletask == 1) Then
-					setScheduleTask();
-					UpdateOutput("Added scheduled task")
-				EndIf
-
-			EndIf
-
-			;-----------------------------------------------------------END CODE
-			UpdateOutput($msg_setup_complete)
-			if ($probconnect > 0) Then UpdateOutput($msg_setup_problem)
-			UpdateProgress(10)
 			GUICtrlSetData($progressbar1, 100)
 			;Setup all done, display hint if hint set and turn off splash if on
 			if ($USESPLASH == 1) Then SplashOff()
-			if ($hint == 1 And $probconnect == 0) Then doHint()
+			;if ($hint == 1 And $probconnect == 0) Then doHint()
 		EndIf
 		;-------------------------------------------------------------------------
 		; All done...
-		;ExitLoop -- DONT THINK THIS IS NEEDED. REMOVED.
-		;WEnd
-
 		
 		If ($msg == $opendebugfile) Then
 			openDebugFile()
@@ -2330,10 +2196,7 @@ While 1
 		EndIf
 
 		;***************************************************************************************MANAGE WIRELESS REAUTH
-
-
 	WEnd
-
 WEnd
 
 ;-------------------------------------------------------------------------
