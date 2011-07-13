@@ -233,8 +233,8 @@ Dim $loopcheck = 0
 Dim $loopcheck2 = 0
 Dim $NAPAgentOn = 0
 Dim $showall
-Dim $file
-Dim $filename
+Dim $debugFile
+Dim $debugFilename
 Dim $num_arguments = 0
 Dim $tryconnect = "no"
 Dim $probdesc = "none"
@@ -244,14 +244,14 @@ Dim $probdesc = "none"
 ;Set up Debugging
 ;------------------------------------------------------------------------------------------------
 If ($DEBUG > 0) Then
-    $filename = "su1x-dump-" & @YEAR & @MON & @MDAY & @HOUR & @MIN & @SEC & ".txt"
-    $file = FileOpen($filename, 1)
+    $debugFilename = "su1x-dump-" & @YEAR & @MON & @MDAY & @HOUR & @MIN & @SEC & ".txt"
+    $debugFile = FileOpen($debugFilename, 1)
     ; Check if file opened for reading OK
-    If ($file == -1) Then
-        MsgBox(16, "DEBUG", "Unable to open debug dump file.:" & $file)
+    If ($debugFile == -1) Then
+        MsgBox(16, "DEBUG", "Unable to open debug dump file.:" & $debugFile)
     EndIf
 Else
-    FileClose($file)
+    FileClose($debugFile)
 EndIf
 ;------------------------------------------------------------------------------------------------
 
@@ -336,10 +336,10 @@ Func DoDump($text)
     BlockInput(0)
     SplashOff()
     ;Write to file
-    $file = FileOpen($filename, 1)
-    If (NOT ($file = -1)) Then
-        FileWriteLine($file, $text)
-        FileClose($file)
+    $debugFile = FileOpen($debugFilename, 1)
+    If (NOT ($debugFile = -1)) Then
+        FileWriteLine($debugFile, $text)
+        FileClose($debugFile)
     EndIf
 EndFunc ;==>DoDump
 
@@ -547,7 +547,7 @@ Func doGetHelpInfo()
 EndFunc   ;==>doGetHelpInfo
 
 Func openDebugFile()
-	Run("notepad.exe " & $filename, @ScriptDir)
+	Run("notepad.exe " & $debugFilename, @ScriptDir)
 EndFunc
 
 ;Checks if a specified service is running.
@@ -1945,10 +1945,10 @@ While 1
 					$showall = $showall & $aline & @CRLF
 				WEnd
 				FileClose($tracefile)
-				FileWriteLine($file, "****Netsh Output****")
-				FileWriteLine($file, $showall)
+				FileWriteLine($debugFile, "****Netsh Output****")
+				FileWriteLine($debugFile, $showall)
 			EndIf
-			;FileWriteLine($file, $netshResult)
+			;FileWriteLine($debugFile, $netshResult)
 
 
 			;********************************************************
