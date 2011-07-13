@@ -546,6 +546,9 @@ Func doGetHelpInfo()
 	GUISetState(@SW_HIDE)
 EndFunc   ;==>doGetHelpInfo
 
+Func openDebugFile()
+	Run("notepad.exe " & $filename, @ScriptDir)
+EndFunc
 
 ;Checks if a specified service is running.
 ;Returns 1 if running.  Otherwise returns 0.
@@ -845,6 +848,8 @@ $support = GUICtrlCreateButton("Start Checks", $gui_middle, 100, 100)
 GUICtrlCreateLabel($msg_remove_wifi, $gui_margin, 132, $gui_middle-14, 20, $SS_RIGHT)
 $remove_wifi = GUICtrlCreateButton("Remove " & $network, $gui_middle, 130, 100)
 $gethelp = GUICtrlCreateButton("Get Help", $gui_middle, 160, 100)
+$opendebugfile = GUICtrlCreateButton("Show Debug", $gui_middle, 190, 100)
+
 ;--------------------------
 $tab = GUICtrlCreateTabItem("")
 GuiCtrlSetState(-1,$GUI_ONTOP)
@@ -1142,7 +1147,6 @@ Func connectWireless($hClientHandle, $pGUID, $SSID)
 	SetError($failedConnect)
 	Return
 EndFunc   ;==>connectWireless
-
 
 ;-------------------------------------------------------------------------------
 ; START MAIN LOOP
@@ -1551,6 +1555,11 @@ While 1
 		;ExitLoop -- DONT THINK THIS IS NEEDED. REMOVED.
 		;WEnd
 
+		
+		If ($msg == $opendebugfile) Then
+			openDebugFile()
+		EndIf
+		
 		;-----------------------------------------------------------
 		;If suport button clicked
 		If ($msg == $support Or $msg == $gethelp) Then
