@@ -1155,23 +1155,13 @@ While 1
 	;two while loops so exitlooop can be used to escape button functions
 	While 1
 		$msg = GUIGetMsg()
-		;if ($showuptick > 0 And $showup > 0) Then
-		;	$checkbox = GUICtrlRead($showPass)
-		;Else
-		;	$checkbox = 0
-		;EndIf
+
 		;-----------------------------------------------------------Exit Tool
-		If $msg == $exitb Then
+		If ($msg == $exitb Or $msg == $GUI_EVENT_CLOSE) Then
 			_Wlan_EndSession(-1)
 			DoDebug("***Exiting SU1X***")
 			Exit
 			ExitLoop
-		EndIf
-
-		If $msg == $GUI_EVENT_CLOSE Then
-			_Wlan_EndSession(-1)
-			DoDebug("***Exiting SU1X***")
-			Exit
 		EndIf
 
 		;---------------------------------------------------------- Show Password
