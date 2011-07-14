@@ -266,11 +266,10 @@ Else
     $argument1 = 0;
 EndIf
 
-
-
 ; ---------------------------------------------------------------
-;Config
+;Functions
 
+;Config
 Func getConfig($section, $item)
 	$value = IniRead($CONFIGFILE, $section, $item, "ConfigError")
 	If @error Then
@@ -278,7 +277,6 @@ Func getConfig($section, $item)
 	EndIf
 	Return $value
 EndFunc   ;==>getConfig
-
 
 Func iterateConfig($section)
 	; return every value under a given section, useful for iterating
@@ -300,9 +298,6 @@ Func cleanExit()
 	; TODO: manifest/uac stuff for win7?
 	
 EndFunc
-
-; ---------------------------------------------------------------
-;Functions
 
 ;return OS string for use in XML file
 Func GetOSVersion()
@@ -344,152 +339,9 @@ Func DoDump($text)
     EndIf
 EndFunc ;==>DoDump
 
-Func _GetMACFromIP($sIP)
-	$ip = "localhost"
-	$mac = "";
-	$objWMIService = ObjGet("winmgmts:{impersonationLevel = impersonate}!\\" & $ip & "\root\cimv2")
-	$colItems = $objWMIService.ExecQuery("SELECT * FROM Win32_NetworkAdapter", "WQL", 0x30)
-	If IsObj($colItems) Then
-		For $objItem In $colItems
-			if ($objItem.AdapterType == "Ethernet 802.3") Then
-				if (StringInStr($objItem.description, "Wi") Or StringInStr($objItem.description, "Wireless") Or StringInStr($objItem.description, "802.11")) Then
-					DoDebug("[support]802.3 Adapter mac address found" & $objItem.MACAddress)
-					$mac &= $objItem.MACAddress
-					$adapter = ""
-				EndIf
-			EndIf
-			;ExitLoop
-		Next
-	Else
-		DoDebug("[support]No 802.3 Adapter found for mac address!")
-	EndIf
-	;Return the user readble MAC address
-	Return $mac
-EndFunc   ;==>_GetMACFromIP
-
-Func Fallback_Connect()
-	;connect to fallback network for support funcs to work
-	If (StringLen($SSID_Fallback) > 0) Then
-		DoDebug("[fallback]connecting to fallback:" & $SSID_Fallback)
-		If (StringInStr(@OSVersion, "7", 0) Or StringInStr(@OSVersion, "VISTA", 0)) Then
-			;Check if the Wireless Zero Configuration Service is running.  If not start it.
-			If IsServiceRunning("WLANSVC") == 0 Then
-				$WZCSVCStarted = 0
-			Else
-				$WZCSVCStarted = 1
-			EndIf
-		Else
-			;ASSUME XP
-			;***************************************
-			;win XP specific checks
-			If IsServiceRunning("WZCSVC") == 0 Then
-				$WZCSVCStarted = 0
-			Else
-				$WZCSVCStarted = 1
-			EndIf
-		EndIf
-
-		;Check that serviec running before disconnect
-		If ($WZCSVCStarted) Then
-			;UpdateOutput("Wireless Service OK")
-		Else
-			UpdateOutput("***Wireless Service Problem")
-		EndIf
-
-		if ($run_already > 0) Then
-			DoDebug("Close Wlan API")
-			_Wlan_CloseHandle()
-		EndIf
-
-		$hClientHandle = _Wlan_OpenHandle()
-		$Enum = _Wlan_EnumInterfaces($hClientHandle)
-
-
-		If (UBound($Enum) == 0) Then
-			DoDebug("[fallback]Error, No Wireless Adapter Found.")
-			$wifi_card = 0
-		Else
-			$wifi_card = 1
-		EndIf
-
-		If ($wifi_card) Then
-			$pGUID = $Enum[0][0]
-
-			;make sure windows can manage wifi card
-			DoDebug("[fallback]Setting windows to manage wifi")
-			;The "use Windows to configure my wireless network settings" checkbox - Needs to be enabled for many funtions to work
-			_Wlan_SetInterface($hClientHandle, $pGUID, 0, "Auto Config Enabled")
-			;check if already connected to fallback network
-			Sleep(1000)
-			$fallback_state = _Wlan_QueryInterface($hClientHandle, $pGUID, 2)
-			DoDebug("fallback_state=" & $fallback_state)
-			if (StringCompare("Connected", $fallback_state, 0) == 0) Then
-				$fallback_state = _Wlan_QueryInterface($hClientHandle, $pGUID, 3)
-				if (StringCompare($SSID_Fallback, $fallback_state[1], 0) == 0) Then
-					;already connected
-					DoDebug("[fallback]Fallback already connected")
-				Else
-					_Wlan_Disconnect($hClientHandle, $pGUID)
-					Sleep(1500)
-					;is fallback in profile list?
-					$fallback = _Wlan_GetProfile($hClientHandle, $pGUID, $SSID_Fallback)
-					$findfallback = _ArrayFindAll($fallback, $SSID_Fallback)
-					if (@error) Then
-						$findfallback = False
-					Else
-						$findfallback = True
-					EndIf
-
-					if ($findfallback == False) Then
-						;set profile
-						Local $SSID_Fallback_profile[1]
-						$SSID_Fallback_profile[0] = $SSID_Fallback
-						_Wlan_SetProfile($hClientHandle, $pGUID, $SSID_Fallback_profile)
-						SetPriority($hClientHandle, $pGUID, $SSID_Fallback, 11)
-						DoDebug("Added fallback profile and set priority")
-					EndIf
-
-					;connect
-					_Wlan_Connect($hClientHandle, $pGUID, $SSID_Fallback)
-					DoDebug("[fallback]_Wlan_Connect has finished" & @CRLF)
-					UpdateOutput("***Connected to fallback network...")
-					Sleep(1000)
-				EndIf
-			Else
-				;is fallback in profile list?
-				$fallback = _Wlan_GetProfile($hClientHandle, $pGUID, $SSID_Fallback)
-				$findfallback = _ArrayFindAll($fallback, $SSID_Fallback)
-				if (@error) Then
-					$findfallback = False
-				Else
-					$findfallback = True
-				EndIf
-
-				if ($findfallback == False) Then
-					;set profile
-					Local $SSID_Fallback_profile[1]
-					$SSID_Fallback_profile[0] = $SSID_Fallback
-					_Wlan_SetProfile($hClientHandle, $pGUID, $SSID_Fallback_profile)
-					SetPriority($hClientHandle, $pGUID, $SSID_Fallback, 11)
-					DoDebug("Added fallback profile and set priority")
-					UpdateOutput("***Connected to fallback network...")
-				EndIf
-				Sleep(1000)
-				_Wlan_Connect($hClientHandle, $pGUID, $SSID_Fallback)
-				DoDebug("[fallback]_Wlan_Connect has finished" & @CRLF)
-				Sleep(1000)
-			EndIf
-		Else
-			UpdateOutput($msg_error_wifiadapter)
-			MsgBox(16, "Error", $msg_error_wifiadapter)
-		EndIf
-
-	Else
-		DoDebug("No fallback network")
-
-	EndIf
-EndFunc   ;==>Fallback_Connect
-
+Func openDebugFile()
+	Run("notepad.exe " & $debugFilename, @ScriptDir)
+EndFunc
 
 Func doHint()
 	if (GetOSVersion() == "XP" Or GetOSVersion() == "XPSP2") Then
@@ -547,27 +399,6 @@ Func doGetHelpInfo()
 	GUISetState(@SW_HIDE)
 EndFunc   ;==>doGetHelpInfo
 
-Func openDebugFile()
-	Run("notepad.exe " & $debugFilename, @ScriptDir)
-EndFunc
-
-;Checks if a specified service is running.
-;Returns 1 if running.  Otherwise returns 0.
-;sc query appears to work in vist and xp
-Func IsServiceRunning($ServiceName)
-	$pid = Run('sc query ' & $ServiceName, '', @SW_HIDE, 2)
-	Global $data = ""
-	Do
-		$data &= StdoutRead($pid)
-	Until @error
-	;DoDebug("data=" & $data)
-	If StringInStr($data, 'running') Then
-		Return 1
-	Else
-		Return 0
-	EndIf
-EndFunc   ;==>IsServiceRunning
-
 ;updates the progress bar by x percent
 Func UpdateProgress($percent)
 	$progress_meter = $progress_meter + $percent
@@ -579,150 +410,6 @@ Func UpdateOutput($output)
 	DoDebug($output)
 	GUICtrlSetData($myedit, $output & @CRLF, @CRLF)
 EndFunc   ;==>UpdateOutput
-
-Func CloseWindows()
-	;This in English specific :(
-	If WinExists("Network Connections") Then
-		;WinWaitClose("Network Connections","",15)
-		WinKill("Network Connections")
-		DoDebug("[setup]Had to Close Network Connectinos")
-	EndIf
-	If WinExists("Wireless Network Connection Properties") Then
-		;WinWaitClose("Wireless Network Connection Properties","",15)
-		WinKill("Wireless Network Connection Properties")
-		DoDebug("[setup]Had to Close Wireless Network Connection Properties")
-	EndIf
-
-EndFunc   ;==>CloseWindows
-
-Func CloseConnectWindows()
-	$winexist = False
-	If WinExists("Connect to a Network") Then
-		;WinWaitClose("Network Connections","",15)
-		WinKill("Connect to a Network")
-		DoDebug("Closed Connect to a Network")
-		$winexist = True
-	EndIf
-	If WinExists("Windows Security") Then
-		;WinWaitClose("Network Connections","",15)
-		WinKill("Windows Security")
-		DoDebug("Closed Windows Security")
-		$winexist = True
-	EndIf
-	Return $winexist
-EndFunc   ;==>CloseConnectWindows
-
-Func RemoveSSID($hClientHandle, $pGUID, $ssidremove)
-	DoDebug("[setup]Removing a ssid:" & $ssidremove)
-	$removed = _Wlan_DeleteProfile($hClientHandle, $pGUID, $ssidremove)
-EndFunc   ;==>RemoveSSID
-
-;sets the priority of a ssid profile
-Func SetPriority($hClientHandle, $pGUID, $thessid, $priority)
-	$setpriority = DllCall($WLANAPIDLL, "dword", "WlanSetProfilePosition", "hwnd", $hClientHandle, "ptr", $pGUID, "wstr", $thessid, "dword", $priority, "ptr", 0)
-	if ($setpriority[0] > 0) Then
-		UpdateOutput("Error: Return code invalid for profile " & $thessid & " priority" & $priority)
-	EndIf
-EndFunc   ;==>SetPriority
-
-;-------------------------------------------------------------------------
-; Does all the prodding required to set the proxy settings in IE and FireFox
-
-Func config_proxy()
-	If ($proxy == 1) Then
-		;Set the IE proxy settings to Automaticaly Detect
-		$key_data = RegRead("HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections", "DefaultConnectionSettings")
-		If @error = 0 Then
-			;backup current value
-			If (RegWrite("HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections", "WiFiConfigBackup", "REG_BINARY", $key_data) == 1) Then
-				;if both previous operations have been successful then proceed with setting Automatically Detect tick box
-				;stitch the existing key together in parts
-				$new_data = Hex(BinaryMid($key_data, 1, 8)) ;first 8 bytes
-				$new_data = $new_data & Hex(BitOR(BinaryMid($key_data, 9, 1), 0x09), 2) ;important byte, set the correct bit of the bit mask
-				$new_data = $new_data & Hex(BinaryMid($key_data, 10, BinaryLen($key_data))) ;remaining bytes
-				$new_data = _HexToString($new_data)
-				RegWrite("HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections", "DefaultConnectionSettings", "REG_BINARY", $new_data)
-				DoDebug("[setup]Backed up IE Reg key to WiFiConfigBackup and added new one")
-			EndIf
-		EndIf
-		UpdateOutput("Configuring Proxy Settings")
-		UpdateProgress(10)
-		$wasrunning = 0
-		;check for IE and kill all IE's ?
-		If ($browser_reset == 1) Then
-			DoDebug("[setup]browser reset=" & $browser_reset)
-			If (ProcessExists("iexplore.exe")) Then
-				MsgBox(48, "IE Detected", "IE configured. RestartingIE to bring changes into effect...")
-				While (ProcessExists("iexplore.exe"))
-					$wasrunning = 1
-					ProcessClose("iexplore.exe")
-				WEnd
-				Sleep(100)
-			EndIf
-			If ($wasrunning == 1) Then Run(@ProgramFilesDir & "\Internet Explorer\iexplore.exe")
-		EndIf
-
-		$wasrunning = 0
-		If (FileExists(@ProgramFilesDir & "\Mozilla Firefox\firefox.exe")) Then
-			If ($browser_reset == 1) Then
-				If (ProcessExists("firefox.exe")) Then
-					MsgBox(48, "FireFox Detected", "FireFox configured. Restarting Firefox to bring changes into effect...")
-					While (ProcessExists("firefox.exe"))
-						$wasrunning = 1
-						ProcessClose("firefox.exe")
-					WEnd
-					Sleep(100)
-				EndIf
-			EndIf
-			$line = FileReadLine(@AppDataDir & "\Mozilla\Firefox\profiles.ini", 7) ; line 7 contains the random string associated with the profile
-			$path = StringTrimLeft($line, 14)
-			$to = @AppDataDir & "\Mozilla\Firefox\Profiles\" & $path & "\prefs.js"
-			$original = FileOpen($to, 1)
-			$in = "user_pref(""network.proxy.type"", 4);"
-			FileWriteLine($original, $in)
-			FileClose($original)
-			If ($wasrunning == 1) Then Run(@ProgramFilesDir & "\Mozilla Firefox\firefox.exe")
-		EndIf
-	EndIf
-EndFunc   ;==>config_proxy
-
-Func setScheduleTask()
-	If (FileExists(@ScriptDir & "\su1x-auth-task.xml")) Then
-
-		$stxml = FileOpen(@ScriptDir & "\su1x-auth-task.xml")
-		If ($stxml = -1) Then
-			DoDebug("ERROR opening ST XML File")
-		EndIf
-
-		If (FileExists(@ScriptDir & "\su1x-auth-task-custom.xml")) Then
-			FileDelete(@ScriptDir & "\su1x-auth-task-custom.xml")
-		EndIf
-		$newstxml = FileOpen(@ScriptDir & "\su1x-auth-task-custom.xml", 1)
-		If ($newstxml = -1) Then
-			DoDebug("ERROR opening new ST XML File")
-		EndIf
-
-		While 1
-			$stline = FileReadLine($stxml)
-			If @error = -1 Then ExitLoop
-			if (StringInStr($stline, "Command") > 0) Then
-				FileWriteLine($newstxml, "<Command>" & @ScriptFullPath & "</Command>")
-			ElseIf (StringInStr($stline, "WorkingDirectory") > 0) Then
-				FileWriteLine($newstxml, "<WorkingDirectory>" & @WorkingDir & "\</WorkingDirectory>")
-			Else
-				FileWriteLine($newstxml, $stline)
-			EndIf
-		WEnd
-		FileClose($stxml)
-		FileClose($newstxml)
-		#RequireAdmin
-		;install scheduled task
-		$stresult = RunWait(@ComSpec & " /c " & "schtasks.exe /create /tn ""su1x-auth-start-tool"" /xml """ & @ScriptDir & "\su1x-auth-task-custom.xml""", "", @SW_HIDE)
-		$st_result = StdoutRead($stresult)
-		DoDebug("Scheduled Task:" & $st_result)
-		;schtasks.exe /create /tn "su1x-auth-start-tool" /xml "f:\eduroam tool\event triggers\su1x-auth-start-orig.xml"
-	EndIf
-EndFunc   ;==>setScheduleTask
 
 Func alreadyRunning()
 	;kill windows sup gui first
@@ -875,6 +562,311 @@ GUISetState(@SW_SHOW)
 ; Unified functions for the two install loops. All lines were
 ; checked (diff) for deviations before merging
 ;-------------------------------------------------------------------------------
+Func _GetMACFromIP($sIP)
+	$ip = "localhost"
+	$mac = "";
+	$objWMIService = ObjGet("winmgmts:{impersonationLevel = impersonate}!\\" & $ip & "\root\cimv2")
+	$colItems = $objWMIService.ExecQuery("SELECT * FROM Win32_NetworkAdapter", "WQL", 0x30)
+	If IsObj($colItems) Then
+		For $objItem In $colItems
+			if ($objItem.AdapterType == "Ethernet 802.3") Then
+				if (StringInStr($objItem.description, "Wi") Or StringInStr($objItem.description, "Wireless") Or StringInStr($objItem.description, "802.11")) Then
+					DoDebug("[support]802.3 Adapter mac address found" & $objItem.MACAddress)
+					$mac &= $objItem.MACAddress
+					$adapter = ""
+				EndIf
+			EndIf
+			;ExitLoop
+		Next
+	Else
+		DoDebug("[support]No 802.3 Adapter found for mac address!")
+	EndIf
+	;Return the user readble MAC address
+	Return $mac
+EndFunc   ;==>_GetMACFromIP
+
+Func Fallback_Connect()
+	;connect to fallback network for support funcs to work
+	If (StringLen($SSID_Fallback) > 0) Then
+		DoDebug("[fallback]connecting to fallback:" & $SSID_Fallback)
+		If (StringInStr(@OSVersion, "7", 0) Or StringInStr(@OSVersion, "VISTA", 0)) Then
+			;Check if the Wireless Zero Configuration Service is running.  If not start it.
+			If IsServiceRunning("WLANSVC") == 0 Then
+				$WZCSVCStarted = 0
+			Else
+				$WZCSVCStarted = 1
+			EndIf
+		Else
+			;ASSUME XP
+			;***************************************
+			;win XP specific checks
+			If IsServiceRunning("WZCSVC") == 0 Then
+				$WZCSVCStarted = 0
+			Else
+				$WZCSVCStarted = 1
+			EndIf
+		EndIf
+
+		;Check that serviec running before disconnect
+		If ($WZCSVCStarted) Then
+			;UpdateOutput("Wireless Service OK")
+		Else
+			UpdateOutput("***Wireless Service Problem")
+		EndIf
+
+		if ($run_already > 0) Then
+			DoDebug("Close Wlan API")
+			_Wlan_CloseHandle()
+		EndIf
+
+		$hClientHandle = _Wlan_OpenHandle()
+		$Enum = _Wlan_EnumInterfaces($hClientHandle)
+
+
+		If (UBound($Enum) == 0) Then
+			DoDebug("[fallback]Error, No Wireless Adapter Found.")
+			$wifi_card = 0
+		Else
+			$wifi_card = 1
+		EndIf
+
+		If ($wifi_card) Then
+			$pGUID = $Enum[0][0]
+
+			;make sure windows can manage wifi card
+			DoDebug("[fallback]Setting windows to manage wifi")
+			;The "use Windows to configure my wireless network settings" checkbox - Needs to be enabled for many funtions to work
+			_Wlan_SetInterface($hClientHandle, $pGUID, 0, "Auto Config Enabled")
+			;check if already connected to fallback network
+			Sleep(1000)
+			$fallback_state = _Wlan_QueryInterface($hClientHandle, $pGUID, 2)
+			DoDebug("fallback_state=" & $fallback_state)
+			if (StringCompare("Connected", $fallback_state, 0) == 0) Then
+				$fallback_state = _Wlan_QueryInterface($hClientHandle, $pGUID, 3)
+				if (StringCompare($SSID_Fallback, $fallback_state[1], 0) == 0) Then
+					;already connected
+					DoDebug("[fallback]Fallback already connected")
+				Else
+					_Wlan_Disconnect($hClientHandle, $pGUID)
+					Sleep(1500)
+					;is fallback in profile list?
+					$fallback = _Wlan_GetProfile($hClientHandle, $pGUID, $SSID_Fallback)
+					$findfallback = _ArrayFindAll($fallback, $SSID_Fallback)
+					if (@error) Then
+						$findfallback = False
+					Else
+						$findfallback = True
+					EndIf
+
+					if ($findfallback == False) Then
+						;set profile
+						Local $SSID_Fallback_profile[1]
+						$SSID_Fallback_profile[0] = $SSID_Fallback
+						_Wlan_SetProfile($hClientHandle, $pGUID, $SSID_Fallback_profile)
+						SetPriority($hClientHandle, $pGUID, $SSID_Fallback, 11)
+						DoDebug("Added fallback profile and set priority")
+					EndIf
+
+					;connect
+					_Wlan_Connect($hClientHandle, $pGUID, $SSID_Fallback)
+					DoDebug("[fallback]_Wlan_Connect has finished" & @CRLF)
+					UpdateOutput("***Connected to fallback network...")
+					Sleep(1000)
+				EndIf
+			Else
+				;is fallback in profile list?
+				$fallback = _Wlan_GetProfile($hClientHandle, $pGUID, $SSID_Fallback)
+				$findfallback = _ArrayFindAll($fallback, $SSID_Fallback)
+				if (@error) Then
+					$findfallback = False
+				Else
+					$findfallback = True
+				EndIf
+
+				if ($findfallback == False) Then
+					;set profile
+					Local $SSID_Fallback_profile[1]
+					$SSID_Fallback_profile[0] = $SSID_Fallback
+					_Wlan_SetProfile($hClientHandle, $pGUID, $SSID_Fallback_profile)
+					SetPriority($hClientHandle, $pGUID, $SSID_Fallback, 11)
+					DoDebug("Added fallback profile and set priority")
+					UpdateOutput("***Connected to fallback network...")
+				EndIf
+				Sleep(1000)
+				_Wlan_Connect($hClientHandle, $pGUID, $SSID_Fallback)
+				DoDebug("[fallback]_Wlan_Connect has finished" & @CRLF)
+				Sleep(1000)
+			EndIf
+		Else
+			UpdateOutput($msg_error_wifiadapter)
+			MsgBox(16, "Error", $msg_error_wifiadapter)
+		EndIf
+
+	Else
+		DoDebug("No fallback network")
+
+	EndIf
+EndFunc   ;==>Fallback_Connect
+
+;Checks if a specified service is running.
+;Returns 1 if running.  Otherwise returns 0.
+;sc query appears to work in vist and xp
+Func IsServiceRunning($ServiceName)
+	$pid = Run('sc query ' & $ServiceName, '', @SW_HIDE, 2)
+	Global $data = ""
+	Do
+		$data &= StdoutRead($pid)
+	Until @error
+	;DoDebug("data=" & $data)
+	If StringInStr($data, 'running') Then
+		Return 1
+	Else
+		Return 0
+	EndIf
+EndFunc   ;==>IsServiceRunning
+
+Func CloseWindows()
+	;This in English specific :(
+	If WinExists("Network Connections") Then
+		;WinWaitClose("Network Connections","",15)
+		WinKill("Network Connections")
+		DoDebug("[setup]Had to Close Network Connectinos")
+	EndIf
+	If WinExists("Wireless Network Connection Properties") Then
+		;WinWaitClose("Wireless Network Connection Properties","",15)
+		WinKill("Wireless Network Connection Properties")
+		DoDebug("[setup]Had to Close Wireless Network Connection Properties")
+	EndIf
+
+EndFunc   ;==>CloseWindows
+
+Func CloseConnectWindows()
+	$winexist = False
+	If WinExists("Connect to a Network") Then
+		;WinWaitClose("Network Connections","",15)
+		WinKill("Connect to a Network")
+		DoDebug("Closed Connect to a Network")
+		$winexist = True
+	EndIf
+	If WinExists("Windows Security") Then
+		;WinWaitClose("Network Connections","",15)
+		WinKill("Windows Security")
+		DoDebug("Closed Windows Security")
+		$winexist = True
+	EndIf
+	Return $winexist
+EndFunc   ;==>CloseConnectWindows
+
+Func RemoveSSID($hClientHandle, $pGUID, $ssidremove)
+	DoDebug("[setup]Removing a ssid:" & $ssidremove)
+	$removed = _Wlan_DeleteProfile($hClientHandle, $pGUID, $ssidremove)
+EndFunc   ;==>RemoveSSID
+
+;sets the priority of a ssid profile
+Func SetPriority($hClientHandle, $pGUID, $thessid, $priority)
+	$setpriority = DllCall($WLANAPIDLL, "dword", "WlanSetProfilePosition", "hwnd", $hClientHandle, "ptr", $pGUID, "wstr", $thessid, "dword", $priority, "ptr", 0)
+	if ($setpriority[0] > 0) Then
+		UpdateOutput("Error: Return code invalid for profile " & $thessid & " priority" & $priority)
+	EndIf
+EndFunc   ;==>SetPriority
+
+;-------------------------------------------------------------------------
+; Does all the prodding required to set the proxy settings in IE and FireFox
+Func config_proxy()
+	If ($proxy == 1) Then
+		;Set the IE proxy settings to Automaticaly Detect
+		$key_data = RegRead("HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections", "DefaultConnectionSettings")
+		If @error = 0 Then
+			;backup current value
+			If (RegWrite("HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections", "WiFiConfigBackup", "REG_BINARY", $key_data) == 1) Then
+				;if both previous operations have been successful then proceed with setting Automatically Detect tick box
+				;stitch the existing key together in parts
+				$new_data = Hex(BinaryMid($key_data, 1, 8)) ;first 8 bytes
+				$new_data = $new_data & Hex(BitOR(BinaryMid($key_data, 9, 1), 0x09), 2) ;important byte, set the correct bit of the bit mask
+				$new_data = $new_data & Hex(BinaryMid($key_data, 10, BinaryLen($key_data))) ;remaining bytes
+				$new_data = _HexToString($new_data)
+				RegWrite("HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections", "DefaultConnectionSettings", "REG_BINARY", $new_data)
+				DoDebug("[setup]Backed up IE Reg key to WiFiConfigBackup and added new one")
+			EndIf
+		EndIf
+		UpdateOutput("Configuring Proxy Settings")
+		UpdateProgress(10)
+		$wasrunning = 0
+		;check for IE and kill all IE's ?
+		If ($browser_reset == 1) Then
+			DoDebug("[setup]browser reset=" & $browser_reset)
+			If (ProcessExists("iexplore.exe")) Then
+				MsgBox(48, "IE Detected", "IE configured. RestartingIE to bring changes into effect...")
+				While (ProcessExists("iexplore.exe"))
+					$wasrunning = 1
+					ProcessClose("iexplore.exe")
+				WEnd
+				Sleep(100)
+			EndIf
+			If ($wasrunning == 1) Then Run(@ProgramFilesDir & "\Internet Explorer\iexplore.exe")
+		EndIf
+
+		$wasrunning = 0
+		If (FileExists(@ProgramFilesDir & "\Mozilla Firefox\firefox.exe")) Then
+			If ($browser_reset == 1) Then
+				If (ProcessExists("firefox.exe")) Then
+					MsgBox(48, "FireFox Detected", "FireFox configured. Restarting Firefox to bring changes into effect...")
+					While (ProcessExists("firefox.exe"))
+						$wasrunning = 1
+						ProcessClose("firefox.exe")
+					WEnd
+					Sleep(100)
+				EndIf
+			EndIf
+			$line = FileReadLine(@AppDataDir & "\Mozilla\Firefox\profiles.ini", 7) ; line 7 contains the random string associated with the profile
+			$path = StringTrimLeft($line, 14)
+			$to = @AppDataDir & "\Mozilla\Firefox\Profiles\" & $path & "\prefs.js"
+			$original = FileOpen($to, 1)
+			$in = "user_pref(""network.proxy.type"", 4);"
+			FileWriteLine($original, $in)
+			FileClose($original)
+			If ($wasrunning == 1) Then Run(@ProgramFilesDir & "\Mozilla Firefox\firefox.exe")
+		EndIf
+	EndIf
+EndFunc   ;==>config_proxy
+
+Func setScheduleTask()
+	If (FileExists(@ScriptDir & "\su1x-auth-task.xml")) Then
+
+		$stxml = FileOpen(@ScriptDir & "\su1x-auth-task.xml")
+		If ($stxml = -1) Then
+			DoDebug("ERROR opening ST XML File")
+		EndIf
+
+		If (FileExists(@ScriptDir & "\su1x-auth-task-custom.xml")) Then
+			FileDelete(@ScriptDir & "\su1x-auth-task-custom.xml")
+		EndIf
+		$newstxml = FileOpen(@ScriptDir & "\su1x-auth-task-custom.xml", 1)
+		If ($newstxml = -1) Then
+			DoDebug("ERROR opening new ST XML File")
+		EndIf
+
+		While 1
+			$stline = FileReadLine($stxml)
+			If @error = -1 Then ExitLoop
+			if (StringInStr($stline, "Command") > 0) Then
+				FileWriteLine($newstxml, "<Command>" & @ScriptFullPath & "</Command>")
+			ElseIf (StringInStr($stline, "WorkingDirectory") > 0) Then
+				FileWriteLine($newstxml, "<WorkingDirectory>" & @WorkingDir & "\</WorkingDirectory>")
+			Else
+				FileWriteLine($newstxml, $stline)
+			EndIf
+		WEnd
+		FileClose($stxml)
+		FileClose($newstxml)
+		#RequireAdmin
+		;install scheduled task
+		$stresult = RunWait(@ComSpec & " /c " & "schtasks.exe /create /tn ""su1x-auth-start-tool"" /xml """ & @ScriptDir & "\su1x-auth-task-custom.xml""", "", @SW_HIDE)
+		$st_result = StdoutRead($stresult)
+		DoDebug("Scheduled Task:" & $st_result)
+		;schtasks.exe /create /tn "su1x-auth-start-tool" /xml "f:\eduroam tool\event triggers\su1x-auth-start-orig.xml"
+	EndIf
+EndFunc   ;==>setScheduleTask
 
 Func enableNAP($id)
 	DoDebug("[setup]Enabling NAP")
