@@ -551,6 +551,10 @@ $n = GUICtrlCreatePic($BANNER, 0, 0, 294, 54, $WS_CLIPSIBLINGS) ;--------pic
 If ($show_printing == 0) Then GUICtrlDelete($tab2)
 If ($show_support == 0) Then GUICtrlDelete($tab3)
 
+;The support and help function are to eduroam specific
+GUICtrlDelete($gethelp)
+GUICtrlDelete($support)
+
 GUISetState(@SW_SHOW)
 ;-------------------------------------------------------------------------
 ; End of GUI code
@@ -1460,6 +1464,420 @@ Func doInstallation()
 	EndIf
 EndFunc   ;==>startInstallation
 
+Func doHelp()
+	;--------check splash on or off
+	;-------------------------------------------------------------------------
+
+	;vist or xp check
+	;Check OS version
+	$output = ""
+	If (GetOSVersion() == "VISTA") Then
+		#RequireAdmin
+		checkAdminRights()
+	EndIf
+
+	If (GetOSVersion() == "WIN7") Then
+		#RequireAdmin
+		checkAdminRights()
+	EndIf
+
+	if (StringLen($SSID_Fallback) > 0 And $msg == $gethelp) Then
+		DoDebug("***GET HELP***")
+		UpdateOutput("***Connecting to fallback:" & $SSID_Fallback & "***")
+		UpdateProgress(20)
+		Fallback_Connect()
+		$run_already = 1
+	EndIf
+
+	UpdateProgress(10);
+	GUICtrlSetData($progressbar1, 0)
+	$progress_meter = 0;
+	;read in username and password
+	If ($showup > 0) Then
+		$user = GUICtrlRead($userbutton)
+		$pass = GUICtrlRead($passbutton)
+	EndIf
+	UpdateOutput("***Starting Checks***")
+
+	if ($msg == $gethelp) Then
+		;check username
+		if (StringInStr($user, "123456") > 0 Or StringLen($user) < 1) Then
+			UpdateProgress(100)
+			UpdateOutput($msg_error_user)
+			Return
+		EndIf
+
+		;check password
+		if (StringLen($pass) < 1) Then
+			UpdateProgress(100)
+			UpdateOutput($msg_error_pass)
+			Return
+		EndIf
+		doGetHelpInfo()
+		$probdesc = GUICtrlRead($probdesc)
+		DoDebug("[support]Prob Description=" & $probdesc)
+	EndIf
+
+	;-------------------------------------------------------------------------GET OS INFO
+	$osinfo = @OSVersion & ":" & @OSServicePack & ":" & @OSLang
+	$compname = @ComputerName
+	$arch = @CPUArch & @OSArch
+	$ip1 = @IPAddress1
+	$ip2 = @IPAddress2
+	If (StringInStr(@IPAddress1, "127.0.0.1")) Then
+		$ip_touse = @IPAddress2
+		If (StringInStr(@IPAddress2, "127.0.0.1")) Then
+			$ip_touse = @IPAddress3
+		EndIf
+	Else
+		$ip_touse = @IPAddress1
+	EndIf
+	$mac = _GetMACFromIP($ip_touse)
+
+	DoDebug("[support]mac=" & $mac)
+	;MsgBox (0, "MAC Value", $MAC)
+	$date = @MDAY & @MON & @YEAR
+	$osuser = @UserName
+	UpdateProgress(20);
+	;-------------------------------------------------------------------------GET WIFI INFO
+	;***************************************
+	;vista and win 7 specific checks
+	If (StringInStr(@OSVersion, "7", 0) Or StringInStr(@OSVersion, "VISTA", 0)) Then
+		;Check if the Wireless Zero Configuration Service is running.  If not start it.
+		If IsServiceRunning("WLANSVC") == 0 Then
+			$WZCSVCStarted = 0
+		Else
+			$WZCSVCStarted = 1
+		EndIf
+	Else
+		;ASSUME XP
+		;***************************************
+		;win XP specific checks
+		If IsServiceRunning("WZCSVC") == 0 Then
+			$WZCSVCStarted = 0
+		Else
+			$WZCSVCStarted = 1
+		EndIf
+	EndIf
+	If ($WZCSVCStarted) Then
+		UpdateOutput("Wireless Service OK")
+		$output &= "Wireless Service [OK]" & @CRLF
+	Else
+		UpdateOutput("***Wireless Service Problem")
+		$output &= "Wireless Service [FAIL]" & @CRLF & "Possible other software managing wireless adapter, not Windows" & @CRLF & @CRLF
+	EndIf
+	UpdateProgress(10);
+
+	if ($run_already > 0) Then _Wlan_CloseHandle()
+
+	$hClientHandle = _Wlan_OpenHandle()
+	$Enum = _Wlan_EnumInterfaces($hClientHandle)
+
+	If (UBound($Enum) == 0) Then
+		DoDebug("[support]Enumeration error=" & @error)
+		DoDebug("[support]Error, No Wireless Adapter Found.")
+		$wifi_card = 0
+	Else
+		$wifi_card = 1
+	EndIf
+
+	If ($wifi_card) Then
+		UpdateOutput("Wireless Adapter OK")
+		$output &= "Wireless Adapter [OK]" & @CRLF
+	Else
+		UpdateOutput("***Wireless Adapter Problem")
+		$output &= "Wireless Adapter [FAIL]" & @CRLF & "No wireless adapter found. Make sure wifi switch is on" & @CRLF & @CRLF
+	EndIf
+	UpdateProgress(10);
+
+
+	If ($wifi_card) Then
+		$pGUID = $Enum[0][0]
+		$wifi_adapter = $Enum[0][1]
+		$wifi_state = $Enum[0][2]
+		DoDebug("[support]wifi card found")
+		;$wifi_networks=_Wlan_GetAvailableNetworkList($hClientHandle, $pGUID,0)
+		;_ArrayDisplay($wifi_networks, "$wifi networks array")
+		;$wifi_profiles = _Wlan_GetProfileList($hClientHandle, $pGUID)
+		;_ArrayDisplay($wifi_profiles, "profiles array")
+		$wifi_eduroam = _Wlan_GetProfile($hClientHandle, $pGUID, $SSID)
+		$findProfile = _ArrayFindAll($wifi_eduroam, $SSID)
+		if (@error) Then
+			$findProfile = False
+		Else
+			$findProfile = True
+		EndIf
+
+		if ($findProfile) Then
+			;_ArrayDisplay($wifi_eduroam, "eduroam array")
+			$wifi_eduroam_all = $wifi_eduroam[0] & "," & $wifi_eduroam[1] & "," & $wifi_eduroam[2] & "," & $wifi_eduroam[3] & "," & $wifi_eduroam[4] & "," & $wifi_eduroam[5] & "," & $wifi_eduroam[6] & "," & $wifi_eduroam[7]
+			DoDebug("[support]wifi profile = " & $wifi_eduroam_all)
+		EndIf
+		If ($findProfile) Then
+			UpdateOutput("Wireless Profile " & $SSID & " OK")
+			$output &= "Wireless Profile [OK]" & @CRLF
+		Else
+			UpdateOutput("***Wireless Profile " & $SSID & " Missing")
+			$output &= "Wireless Setup [FAIL]" & @CRLF & $SSID & " profile missing, run setup tool again." & @CRLF & @CRLF
+		EndIf
+		UpdateProgress(10);
+		$wifi_state = _Wlan_QueryInterface($hClientHandle, $pGUID, 2)
+		if (StringInStr($wifi_state, "Dis") OR ($wifi_state == 0)) Then
+			;do some thing
+		Else
+			$wifi_interface = _Wlan_QueryInterface($hClientHandle, $pGUID, 3)
+			if (@error) Then
+				DoDebug("[support]error interface settings:" & @error & $wifi_state)
+			EndIf
+			$wifi_int_all = $wifi_interface[0] & "," & $wifi_interface[1] & "," & $wifi_interface[2] & "," & $wifi_interface[3] & "," & $wifi_interface[4] & "," & $wifi_interface[5] & "," & $wifi_interface[6] & "," & $wifi_interface[7]
+			if (@error) Then
+				DoDebug("[support]error interface array:" & @error)
+			EndIf
+			DoDebug("[support]wifi int=" & $wifi_int_all)
+		EndIf
+		;*****************************************************
+		; Get wifi adapter driver details
+		For $i = 1 To 200
+			$var = RegEnumKey("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\", $i)
+			If @error <> 0 Then ExitLoop
+			For $j = 1 To 100
+				$var2 = RegEnumKey("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var, $j)
+				If @error <> 0 Then ExitLoop
+				For $k = 1 To 100
+					$var3 = RegEnumVal("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2, $k)
+					If @error <> 0 Then
+						;MsgBox(4096,"error","error reading HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2 & "\AdapterModel")
+						ExitLoop
+					EndIf
+					if (StringInStr($var3, "AdapterModel") Or StringInStr($var3, "DriverDesc")) Then
+						$AdapterModel = RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2, $var3)
+						$DriverDesc = RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2, "DriverDesc")
+						if (StringInStr($AdapterModel, $wifi_adapter) Or StringInStr($DriverDesc, $wifi_adapter)) Then
+							;get data
+							$DriverDate = RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2, "DriverDate")
+							$DriverVersion = RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2, "DriverVersion")
+							$HardwareVersion = RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2, "HardwareVersion")
+							;MsgBox(4096,"error","Found adpatermodel: " & $AdapterModel)
+							;MsgBox(4096,"error","DriverDate: " & $DriverDate)
+							;MsgBox(4096,"error","DriverVersion: " & $DriverVersion)
+							;MsgBox(4096,"error","HardwareVersion: " & $HardwareVersion)
+						EndIf
+					EndIf
+				Next
+			Next
+		Next
+
+		$ipok = 0
+		;******check wifi card has ip before trying to send https stuff
+		if ((StringLen($ip1) == 0) OR (StringInStr($ip1, "169.254.") > 0) OR (StringInStr($ip1, "127.0.0") > 0)) Then
+			UpdateOutput("****No IP address found")
+			$output &= "Wireless IP [FAIL]" & @CRLF & "No IP Address." & @CRLF & @CRLF
+		Else
+			$output &= "Wireless IP [OK]" & @CRLF
+			UpdateOutput("****IP found:" & $ip1)
+			$ipok = 1
+		EndIf
+
+		if ($ipok == 1 And $msg == $gethelp) Then
+
+			;-------------------------------------------------------------------------Performe LDAP login test
+			;
+			;
+			DoDebug("[support]send_ldap=" & $send_ldap)
+			if ($send_ldap == 1 And $msg == $gethelp) Then
+				$ynresponse = MsgBox(4, "Send Support Data", "Support data will be sent securely to " & $sendsupport_dept & " servers. This includes your username (NOT your password) and wireless adapter / device settings. Do you want to send support data?")
+			EndIf
+			if ($send_ldap == 1 And $ynresponse == 6 And $msg == $gethelp) Then
+				Dim $response = ""
+				;encode pass
+				$pass = StringToASCIIArray($pass)
+				$pass = _ArrayToString($pass, "|")
+				DoDebug("[support]pass=" & $pass)
+				DoDebug("[support]" & $ldap_url & "?email=" & $user & "&" & "pass=" & $pass)
+				Local $response = InetRead($ldap_url & "?email=" & $user & "&" & "pass=" & $pass, 1)
+				Sleep(3000)
+				if (@error) Then
+					DoDebug("[support]Error with https")
+					UpdateOutput("****Wireless Login Test Connection Error")
+					$output &= "Wireless Loging Test [FAIL]" & @CRLF & "No connection to Intranet." & @CRLF & @CRLF
+				EndIf
+				$response = BinaryToString($response)
+				$response2 = $response
+				DoDebug("[support]response=" & $response)
+				;MsgBox(4096, "", "Response: " & @CRLF & @CRLF & BinaryToString($response))
+				If (StringInStr($response, "Accepted", 0)) Then
+					UpdateOutput("Wireless Username/Password OK")
+					$output &= "Wireless Username/Password [OK]" & @CRLF
+				EndIf
+				If (StringInStr($response, "Username not found on LDAP", 0)) Then
+					UpdateOutput("****Wireless Username Error")
+					$output &= "Wireless Username [FAIL]" & @CRLF & "Username " & $user & "is not correct, or not found on wireless servers." & @CRLF & @CRLF
+				EndIf
+				If (StringInStr($response, "Ambigious result", 0)) Then
+					UpdateOutput("****Wireless Username Error Ambigious")
+					$output &= "Wireless Username [FAIL]" & @CRLF & "Ambigious result. Please see IT Support." & @CRLF & @CRLF
+				EndIf
+				If (StringInStr($response, "Password Incorrect", 0)) Then
+					UpdateOutput("****Wireless Password Incorrect")
+					$output &= "Wireless Password [FAIL]" & @CRLF & "The username is correct, but the password is not correct." & @CRLF & @CRLF
+				EndIf
+				UpdateProgress(10)
+
+				;-------------------------------------------------------------------------Check Registration tables
+				Dim $regtest = ""
+				Local $regtest = InetRead($regtest_url & "?email=" & $user & "&" & "mac=" & $mac, 1)
+				DoDebug($regtest_url & "?email=" & $user & "&" & "mac=" & $mac)
+				Sleep(3000)
+				if (@error) Then
+					DoDebug("[support]Error with reg https")
+					UpdateOutput("****Wireless Reg Test Connection Error")
+					$output &= "Wireless Registration Test [FAIL]" & @CRLF & "No connection to Intranet." & @CRLF & @CRLF
+				EndIf
+				$regtest = BinaryToString($regtest)
+				$regtest2 = $regtest
+				DoDebug("[support]regtest=" & $regtest)
+				;MsgBox(4096, "", "Response: " & @CRLF & @CRLF & BinaryToString($response))
+				If (StringInStr($regtest, "Registration OK", 0)) Then
+					UpdateOutput("Wireless Registration OK")
+					$output &= "Wireless Registartion [OK]" & @CRLF
+				EndIf
+				If (StringInStr($regtest, "Device not in DHCP table", 0)) Then
+					UpdateOutput("****Registration Error:DHCP table")
+					$output &= "Wireless Registartion [FAIL]" & @CRLF & "Device missing from DHCP. Reregister or see IT Support." & @CRLF & @CRLF
+				EndIf
+				If (StringInStr($regtest, "Device Not Registered", 0)) Then
+					UpdateOutput("****Registration Error: Not Registered")
+					$output &= "Wireless Registartion [FAIL]" & @CRLF & "Device not Registerd. Please regsiter this device." & @CRLF & @CRLF
+				EndIf
+				If (StringInStr($regtest, "Database Failure (usergroup)", 0)) Then
+					UpdateOutput("****Registration Error: User not in DB")
+					$output &= "Wireless Registartion [FAIL]" & @CRLF & $user & " not found on wireles system." & @CRLF & @CRLF
+				EndIf
+				If (StringInStr($regtest, "Database Failure (ambigious username)", 0)) Then
+					UpdateOutput("****Registration Error: Ambigious username")
+					$output &= "Wireless Registartion [FAIL]" & @CRLF & $user & " ambigious. Please see IT Support." & @CRLF & @CRLF
+				EndIf
+				If (StringInStr($regtest, "Mac/User mismatch", 0)) Then
+					UpdateOutput("****Registration Error: MAC Device Mismatch")
+					$output &= "Wireless Registartion [FAIL]" & @CRLF & $user & " not registered keeper of this device." & @CRLF & @CRLF
+				EndIf
+			EndIf
+			;response to YES or NO msg box
+			UpdateProgress(10)
+
+			DoDebug("[support]send problem =" & $send_problem)
+			if ($send_problem == 1 And $ynresponse = 6 And $msg == $gethelp) Then
+				;---------------------------------------SEND PROB DATA TO SUPPORT
+				Dim $send = ""
+				Local $send = InetRead($sendsupport_url & "?email=" & $user & "&" & "os=" & GetOSVersion() & "&" & "compname=" & $compname & "&" & "arch=" & $arch & "&" & "ip1=" & $ip1 & "&" & "ip2=" & $ip2 & "&" & "date=" & $date & "&" & "osuser=" & $osuser & "&" & "WZCSVCStarted=" & $WZCSVCStarted & "&" & "wifi_adapter=" & $wifi_adapter & "&" & "wifi_state=" & $wifi_state & "&" & "wifi_eduroam_all=" & $wifi_eduroam_all & "&" & "wifi_int_all=" & $wifi_int_all & "&" & "mac=" & $mac & "&" & "regtest=" & $regtest & "&" & "response=" & $response2 & "&" & "driverVersion=" & $DriverVersion & "&" & "driverDate=" & $DriverDate & "&" & "hardwareVersion=" & $HardwareVersion & "&" & "problemDesc=" & $probdesc, 1)
+				Sleep(1000)
+				if (@error) Then
+					DoDebug("[support]Error with send")
+					UpdateOutput("****Wireless Data Send Connection Error")
+					$output &= "Wireless Data Send [FAIL]" & @CRLF & "No connection to Intranet." & @CRLF & @CRLF
+				EndIf
+				$send = BinaryToString($send)
+				;UpdateOutput("https://lsayregj.swan.ac.uk/swisweb/swis/eduroam/sendsupport.php?email="& $user & "&" & "pass=" & $pass & "&" & "os=" & GetOSVersion() & "&" & "compname=" & $compname & "&" & "arch=" & $arch & "&" & "ip1=" & $ip1 & "&" & "ip2=" & $ip2 & "&" & "date=" & $date & "&" & "osuser=" & $osuser & "&" & "WZCSVCStarted=" & $WZCSVCStarted  & "&" & "wifi_adapter=" & $wifi_adapter & "&" & "wifi_state=" & $wifi_state  & "&" & "wifi_eduroam_all=" & $wifi_eduroam_all & "&" & "wifi_int_all=" & $wifi_int_all & "&" & "mac=" & $mac & "&" & "regtest=" & $regtest & "&" & "response=" & $response2)
+				DoDebug("[support]send=" & $send)
+			EndIf
+
+		EndIf
+
+
+
+		;DoDebug("here")
+		;end if for ip length
+	EndIf
+	;********************************************************
+	;end code
+	;********************************************************
+	;DoDebug("[support]user=" &$user)
+	;DoDebug("[support]pass=" &$pass)
+	;DoDebug("[support]os="&GetOSVersion())
+	;DoDebug("[support]compName=" & $compname)
+	;DoDebug("[support]arch=" & $arch)
+	;DoDebug("[support]ip=" &$ip1)
+	;DoDebug("[support]ip2=" &$ip2)
+	;DoDebug("[support]date=" &$date)
+	;DoDebug("[support]OSUser=" &$osuser)
+	;DoDebug("[support]Wifi service="&$WZCSVCStarted)
+	;DoDebug("[support]Wifi Card="&$wifi_card)
+	;DoDebug("[support]Wifi adapter="&$wifi_adapter)
+	;DoDebug("[support]Wifi state="&$wifi_state)
+	DoDebug("[support]LDAP Test:" & $response)
+	$run_already = 1
+
+
+	DoDump("****SU1X Dump of Support Data****")
+	DoDump("****date = " & @YEAR & @MON & @MDAY & @HOUR & @MIN & @SEC)
+	DoDump("****")
+	DoDump("User=" & $user)
+	DoDump("OS=" & GetOSVersion())
+	DoDump("CompName=" & $compname)
+	DoDump("IP1=" & $ip1)
+	DoDump("IP2=" & $ip2)
+	DoDump("System Date=" & $date)
+	DoDump("WZC Serv Started=" & $WZCSVCStarted)
+	DoDump("Wifi Adapter=" & $wifi_adapter)
+	DoDump("Wifi State=" & $wifi_state)
+	DoDump("Wifi Profile=" & $wifi_eduroam_all)
+	DoDump("Wifi Interface=" & $wifi_int_all)
+	DoDump("MAC=" & $mac)
+	DoDump("Driver Version=" & $DriverVersion)
+	DoDump("Driver Date=" & $DriverDate)
+	DoDump("Hardware Ver=" & $HardwareVersion)
+	DoDump("****Support Checks Output****")
+	DoDump("Data Send=" & $output)
+	$cmd = "netsh wlan show all > " & @WindowsDir & "\tracing\showall.txt"
+	;DoDebug("cmd=" & $cmd)
+	;$result = RunWait($cmd, @SW_HIDE)
+	$result = RunWait(@ComSpec & " /c " & $cmd, "", @SW_HIDE)
+	;$netshResult=StdoutRead($result)
+	;*****************************************************
+	;read in trace Files
+	$tracefile = FileOpen(@WindowsDir & "\tracing\showall.txt", 0)
+	; Check if file opened for reading OK
+	If $tracefile = -1 Then
+		DoDebug("[support]Unable to open trace file:" & $tracefile)
+	Else
+		DoDebug("[support]wlan trace file ok:" & $tracefile)
+		While 1
+			$aline = FileReadLine($tracefile)
+			If @error = -1 Then ExitLoop
+			$showall = $showall & $aline & @CRLF
+		WEnd
+		FileClose($tracefile)
+		FileWriteLine($debugFile, "****Netsh Output****")
+		FileWriteLine($debugFile, $showall)
+	EndIf
+	;FileWriteLine($debugFile, $netshResult)
+
+
+	;********************************************************
+	;end code
+	;********************************************************
+
+	;_Wlan_EndSession(-1)
+	if (StringInStr($output, "[FAIL]")) Then
+		$output &= @CRLF & "A problem has been detected."
+		TrayTip("Problem Detected", $output, 30, 3)
+		UpdateOutput("****Problem Detected****")
+	Else
+		$output &= @CRLF & "No problems detected."
+		TrayTip("No Problems Detected", $output, 30, 1)
+		UpdateOutput("No Problem Detected")
+	EndIf
+	;UpdateOutput("Checks Complete")
+	;MsgBox(4096,"Support Report",$output)
+	UpdateProgress(10);
+	GUICtrlSetData($progressbar1, 100)
+	;Setup all done, display hint if hint set and turn off splash if on
+	;if ($USESPLASH == 1) Then SplashOff()
+	;-------------------------------------------------------------------------
+	; All done...
+	$msg = ""
+	;ExitLoop
+EndFunc
 ;-------------------------------------------------------------------------------
 ; START MAIN LOOP
 ;-------------------------------------------------------------------------------
@@ -1507,418 +1925,7 @@ While 1
 		
 		;-----------------------------------------------------------If support button clicked
 		If ($msg == $support Or $msg == $gethelp) Then
-			;--------check splash on or off
-			;-------------------------------------------------------------------------
-
-			;vist or xp check
-			;Check OS version
-			$output = ""
-			If (GetOSVersion() == "VISTA") Then
-				#RequireAdmin
-				checkAdminRights()
-			EndIf
-
-			If (GetOSVersion() == "WIN7") Then
-				#RequireAdmin
-				checkAdminRights()
-			EndIf
-
-			if (StringLen($SSID_Fallback) > 0 And $msg == $gethelp) Then
-				DoDebug("***GET HELP***")
-				UpdateOutput("***Connecting to fallback:" & $SSID_Fallback & "***")
-				UpdateProgress(20)
-				Fallback_Connect()
-				$run_already = 1
-			EndIf
-
-			UpdateProgress(10);
-			GUICtrlSetData($progressbar1, 0)
-			$progress_meter = 0;
-			;read in username and password
-			If ($showup > 0) Then
-				$user = GUICtrlRead($userbutton)
-				$pass = GUICtrlRead($passbutton)
-			EndIf
-			UpdateOutput("***Starting Checks***")
-
-			if ($msg == $gethelp) Then
-				;check username
-				if (StringInStr($user, "123456") > 0 Or StringLen($user) < 1) Then
-					UpdateProgress(100)
-					UpdateOutput($msg_error_user)
-					ExitLoop
-				EndIf
-
-				;check password
-				if (StringLen($pass) < 1) Then
-					UpdateProgress(100)
-					UpdateOutput($msg_error_pass)
-					ExitLoop
-				EndIf
-				doGetHelpInfo()
-				$probdesc = GUICtrlRead($probdesc)
-				DoDebug("[support]Prob Description=" & $probdesc)
-			EndIf
-
-			;-------------------------------------------------------------------------GET OS INFO
-			$osinfo = @OSVersion & ":" & @OSServicePack & ":" & @OSLang
-			$compname = @ComputerName
-			$arch = @CPUArch & @OSArch
-			$ip1 = @IPAddress1
-			$ip2 = @IPAddress2
-			If (StringInStr(@IPAddress1, "127.0.0.1")) Then
-				$ip_touse = @IPAddress2
-				If (StringInStr(@IPAddress2, "127.0.0.1")) Then
-					$ip_touse = @IPAddress3
-				EndIf
-			Else
-				$ip_touse = @IPAddress1
-			EndIf
-			$mac = _GetMACFromIP($ip_touse)
-
-			DoDebug("[support]mac=" & $mac)
-			;MsgBox (0, "MAC Value", $MAC)
-			$date = @MDAY & @MON & @YEAR
-			$osuser = @UserName
-			UpdateProgress(20);
-			;-------------------------------------------------------------------------GET WIFI INFO
-			;***************************************
-			;vista and win 7 specific checks
-			If (StringInStr(@OSVersion, "7", 0) Or StringInStr(@OSVersion, "VISTA", 0)) Then
-				;Check if the Wireless Zero Configuration Service is running.  If not start it.
-				If IsServiceRunning("WLANSVC") == 0 Then
-					$WZCSVCStarted = 0
-				Else
-					$WZCSVCStarted = 1
-				EndIf
-			Else
-				;ASSUME XP
-				;***************************************
-				;win XP specific checks
-				If IsServiceRunning("WZCSVC") == 0 Then
-					$WZCSVCStarted = 0
-				Else
-					$WZCSVCStarted = 1
-				EndIf
-			EndIf
-			If ($WZCSVCStarted) Then
-				UpdateOutput("Wireless Service OK")
-				$output &= "Wireless Service [OK]" & @CRLF
-			Else
-				UpdateOutput("***Wireless Service Problem")
-				$output &= "Wireless Service [FAIL]" & @CRLF & "Possible other software managing wireless adapter, not Windows" & @CRLF & @CRLF
-			EndIf
-			UpdateProgress(10);
-
-			if ($run_already > 0) Then _Wlan_CloseHandle()
-
-			$hClientHandle = _Wlan_OpenHandle()
-			$Enum = _Wlan_EnumInterfaces($hClientHandle)
-
-			If (UBound($Enum) == 0) Then
-				DoDebug("[support]Enumeration error=" & @error)
-				DoDebug("[support]Error, No Wireless Adapter Found.")
-				$wifi_card = 0
-			Else
-				$wifi_card = 1
-			EndIf
-
-			If ($wifi_card) Then
-				UpdateOutput("Wireless Adapter OK")
-				$output &= "Wireless Adapter [OK]" & @CRLF
-			Else
-				UpdateOutput("***Wireless Adapter Problem")
-				$output &= "Wireless Adapter [FAIL]" & @CRLF & "No wireless adapter found. Make sure wifi switch is on" & @CRLF & @CRLF
-			EndIf
-			UpdateProgress(10);
-
-
-			If ($wifi_card) Then
-				$pGUID = $Enum[0][0]
-				$wifi_adapter = $Enum[0][1]
-				$wifi_state = $Enum[0][2]
-				DoDebug("[support]wifi card found")
-				;$wifi_networks=_Wlan_GetAvailableNetworkList($hClientHandle, $pGUID,0)
-				;_ArrayDisplay($wifi_networks, "$wifi networks array")
-				;$wifi_profiles = _Wlan_GetProfileList($hClientHandle, $pGUID)
-				;_ArrayDisplay($wifi_profiles, "profiles array")
-				$wifi_eduroam = _Wlan_GetProfile($hClientHandle, $pGUID, $SSID)
-				$findProfile = _ArrayFindAll($wifi_eduroam, $SSID)
-				if (@error) Then
-					$findProfile = False
-				Else
-					$findProfile = True
-				EndIf
-
-				if ($findProfile) Then
-					;_ArrayDisplay($wifi_eduroam, "eduroam array")
-					$wifi_eduroam_all = $wifi_eduroam[0] & "," & $wifi_eduroam[1] & "," & $wifi_eduroam[2] & "," & $wifi_eduroam[3] & "," & $wifi_eduroam[4] & "," & $wifi_eduroam[5] & "," & $wifi_eduroam[6] & "," & $wifi_eduroam[7]
-					DoDebug("[support]wifi profile = " & $wifi_eduroam_all)
-				EndIf
-				If ($findProfile) Then
-					UpdateOutput("Wireless Profile " & $SSID & " OK")
-					$output &= "Wireless Profile [OK]" & @CRLF
-				Else
-					UpdateOutput("***Wireless Profile " & $SSID & " Missing")
-					$output &= "Wireless Setup [FAIL]" & @CRLF & $SSID & " profile missing, run setup tool again." & @CRLF & @CRLF
-				EndIf
-				UpdateProgress(10);
-				$wifi_state = _Wlan_QueryInterface($hClientHandle, $pGUID, 2)
-				if (StringInStr($wifi_state, "Dis") OR ($wifi_state == 0)) Then
-					;do some thing
-				Else
-					$wifi_interface = _Wlan_QueryInterface($hClientHandle, $pGUID, 3)
-					if (@error) Then
-						DoDebug("[support]error interface settings:" & @error & $wifi_state)
-					EndIf
-					$wifi_int_all = $wifi_interface[0] & "," & $wifi_interface[1] & "," & $wifi_interface[2] & "," & $wifi_interface[3] & "," & $wifi_interface[4] & "," & $wifi_interface[5] & "," & $wifi_interface[6] & "," & $wifi_interface[7]
-					if (@error) Then
-						DoDebug("[support]error interface array:" & @error)
-					EndIf
-					DoDebug("[support]wifi int=" & $wifi_int_all)
-				EndIf
-				;*****************************************************
-				; Get wifi adapter driver details
-				For $i = 1 To 200
-					$var = RegEnumKey("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\", $i)
-					If @error <> 0 Then ExitLoop
-					For $j = 1 To 100
-						$var2 = RegEnumKey("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var, $j)
-						If @error <> 0 Then ExitLoop
-						For $k = 1 To 100
-							$var3 = RegEnumVal("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2, $k)
-							If @error <> 0 Then
-								;MsgBox(4096,"error","error reading HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2 & "\AdapterModel")
-								ExitLoop
-							EndIf
-							if (StringInStr($var3, "AdapterModel") Or StringInStr($var3, "DriverDesc")) Then
-								$AdapterModel = RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2, $var3)
-								$DriverDesc = RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2, "DriverDesc")
-								if (StringInStr($AdapterModel, $wifi_adapter) Or StringInStr($DriverDesc, $wifi_adapter)) Then
-									;get data
-									$DriverDate = RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2, "DriverDate")
-									$DriverVersion = RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2, "DriverVersion")
-									$HardwareVersion = RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\" & $var & "\" & $var2, "HardwareVersion")
-									;MsgBox(4096,"error","Found adpatermodel: " & $AdapterModel)
-									;MsgBox(4096,"error","DriverDate: " & $DriverDate)
-									;MsgBox(4096,"error","DriverVersion: " & $DriverVersion)
-									;MsgBox(4096,"error","HardwareVersion: " & $HardwareVersion)
-								EndIf
-							EndIf
-						Next
-					Next
-				Next
-
-				$ipok = 0
-				;******check wifi card has ip before trying to send https stuff
-				if ((StringLen($ip1) == 0) OR (StringInStr($ip1, "169.254.") > 0) OR (StringInStr($ip1, "127.0.0") > 0)) Then
-					UpdateOutput("****No IP address found")
-					$output &= "Wireless IP [FAIL]" & @CRLF & "No IP Address." & @CRLF & @CRLF
-				Else
-					$output &= "Wireless IP [OK]" & @CRLF
-					UpdateOutput("****IP found:" & $ip1)
-					$ipok = 1
-				EndIf
-
-				if ($ipok == 1 And $msg == $gethelp) Then
-
-					;-------------------------------------------------------------------------Performe LDAP login test
-					;
-					;
-					DoDebug("[support]send_ldap=" & $send_ldap)
-					if ($send_ldap == 1 And $msg == $gethelp) Then
-						$ynresponse = MsgBox(4, "Send Support Data", "Support data will be sent securely to " & $sendsupport_dept & " servers. This includes your username (NOT your password) and wireless adapter / device settings. Do you want to send support data?")
-					EndIf
-					if ($send_ldap == 1 And $ynresponse == 6 And $msg == $gethelp) Then
-						Dim $response = ""
-						;encode pass
-						$pass = StringToASCIIArray($pass)
-						$pass = _ArrayToString($pass, "|")
-						DoDebug("[support]pass=" & $pass)
-						DoDebug("[support]" & $ldap_url & "?email=" & $user & "&" & "pass=" & $pass)
-						Local $response = InetRead($ldap_url & "?email=" & $user & "&" & "pass=" & $pass, 1)
-						Sleep(3000)
-						if (@error) Then
-							DoDebug("[support]Error with https")
-							UpdateOutput("****Wireless Login Test Connection Error")
-							$output &= "Wireless Loging Test [FAIL]" & @CRLF & "No connection to Intranet." & @CRLF & @CRLF
-						EndIf
-						$response = BinaryToString($response)
-						$response2 = $response
-						DoDebug("[support]response=" & $response)
-						;MsgBox(4096, "", "Response: " & @CRLF & @CRLF & BinaryToString($response))
-						If (StringInStr($response, "Accepted", 0)) Then
-							UpdateOutput("Wireless Username/Password OK")
-							$output &= "Wireless Username/Password [OK]" & @CRLF
-						EndIf
-						If (StringInStr($response, "Username not found on LDAP", 0)) Then
-							UpdateOutput("****Wireless Username Error")
-							$output &= "Wireless Username [FAIL]" & @CRLF & "Username " & $user & "is not correct, or not found on wireless servers." & @CRLF & @CRLF
-						EndIf
-						If (StringInStr($response, "Ambigious result", 0)) Then
-							UpdateOutput("****Wireless Username Error Ambigious")
-							$output &= "Wireless Username [FAIL]" & @CRLF & "Ambigious result. Please see IT Support." & @CRLF & @CRLF
-						EndIf
-						If (StringInStr($response, "Password Incorrect", 0)) Then
-							UpdateOutput("****Wireless Password Incorrect")
-							$output &= "Wireless Password [FAIL]" & @CRLF & "The username is correct, but the password is not correct." & @CRLF & @CRLF
-						EndIf
-						UpdateProgress(10)
-
-						;-------------------------------------------------------------------------Check Registration tables
-						Dim $regtest = ""
-						Local $regtest = InetRead($regtest_url & "?email=" & $user & "&" & "mac=" & $mac, 1)
-						DoDebug($regtest_url & "?email=" & $user & "&" & "mac=" & $mac)
-						Sleep(3000)
-						if (@error) Then
-							DoDebug("[support]Error with reg https")
-							UpdateOutput("****Wireless Reg Test Connection Error")
-							$output &= "Wireless Registration Test [FAIL]" & @CRLF & "No connection to Intranet." & @CRLF & @CRLF
-						EndIf
-						$regtest = BinaryToString($regtest)
-						$regtest2 = $regtest
-						DoDebug("[support]regtest=" & $regtest)
-						;MsgBox(4096, "", "Response: " & @CRLF & @CRLF & BinaryToString($response))
-						If (StringInStr($regtest, "Registration OK", 0)) Then
-							UpdateOutput("Wireless Registration OK")
-							$output &= "Wireless Registartion [OK]" & @CRLF
-						EndIf
-						If (StringInStr($regtest, "Device not in DHCP table", 0)) Then
-							UpdateOutput("****Registration Error:DHCP table")
-							$output &= "Wireless Registartion [FAIL]" & @CRLF & "Device missing from DHCP. Reregister or see IT Support." & @CRLF & @CRLF
-						EndIf
-						If (StringInStr($regtest, "Device Not Registered", 0)) Then
-							UpdateOutput("****Registration Error: Not Registered")
-							$output &= "Wireless Registartion [FAIL]" & @CRLF & "Device not Registerd. Please regsiter this device." & @CRLF & @CRLF
-						EndIf
-						If (StringInStr($regtest, "Database Failure (usergroup)", 0)) Then
-							UpdateOutput("****Registration Error: User not in DB")
-							$output &= "Wireless Registartion [FAIL]" & @CRLF & $user & " not found on wireles system." & @CRLF & @CRLF
-						EndIf
-						If (StringInStr($regtest, "Database Failure (ambigious username)", 0)) Then
-							UpdateOutput("****Registration Error: Ambigious username")
-							$output &= "Wireless Registartion [FAIL]" & @CRLF & $user & " ambigious. Please see IT Support." & @CRLF & @CRLF
-						EndIf
-						If (StringInStr($regtest, "Mac/User mismatch", 0)) Then
-							UpdateOutput("****Registration Error: MAC Device Mismatch")
-							$output &= "Wireless Registartion [FAIL]" & @CRLF & $user & " not registered keeper of this device." & @CRLF & @CRLF
-						EndIf
-					EndIf
-					;response to YES or NO msg box
-					UpdateProgress(10)
-
-					DoDebug("[support]send problem =" & $send_problem)
-					if ($send_problem == 1 And $ynresponse = 6 And $msg == $gethelp) Then
-						;---------------------------------------SEND PROB DATA TO SUPPORT
-						Dim $send = ""
-						Local $send = InetRead($sendsupport_url & "?email=" & $user & "&" & "os=" & GetOSVersion() & "&" & "compname=" & $compname & "&" & "arch=" & $arch & "&" & "ip1=" & $ip1 & "&" & "ip2=" & $ip2 & "&" & "date=" & $date & "&" & "osuser=" & $osuser & "&" & "WZCSVCStarted=" & $WZCSVCStarted & "&" & "wifi_adapter=" & $wifi_adapter & "&" & "wifi_state=" & $wifi_state & "&" & "wifi_eduroam_all=" & $wifi_eduroam_all & "&" & "wifi_int_all=" & $wifi_int_all & "&" & "mac=" & $mac & "&" & "regtest=" & $regtest & "&" & "response=" & $response2 & "&" & "driverVersion=" & $DriverVersion & "&" & "driverDate=" & $DriverDate & "&" & "hardwareVersion=" & $HardwareVersion & "&" & "problemDesc=" & $probdesc, 1)
-						Sleep(1000)
-						if (@error) Then
-							DoDebug("[support]Error with send")
-							UpdateOutput("****Wireless Data Send Connection Error")
-							$output &= "Wireless Data Send [FAIL]" & @CRLF & "No connection to Intranet." & @CRLF & @CRLF
-						EndIf
-						$send = BinaryToString($send)
-						;UpdateOutput("https://lsayregj.swan.ac.uk/swisweb/swis/eduroam/sendsupport.php?email="& $user & "&" & "pass=" & $pass & "&" & "os=" & GetOSVersion() & "&" & "compname=" & $compname & "&" & "arch=" & $arch & "&" & "ip1=" & $ip1 & "&" & "ip2=" & $ip2 & "&" & "date=" & $date & "&" & "osuser=" & $osuser & "&" & "WZCSVCStarted=" & $WZCSVCStarted  & "&" & "wifi_adapter=" & $wifi_adapter & "&" & "wifi_state=" & $wifi_state  & "&" & "wifi_eduroam_all=" & $wifi_eduroam_all & "&" & "wifi_int_all=" & $wifi_int_all & "&" & "mac=" & $mac & "&" & "regtest=" & $regtest & "&" & "response=" & $response2)
-						DoDebug("[support]send=" & $send)
-					EndIf
-
-				EndIf
-
-
-
-				;DoDebug("here")
-				;end if for ip length
-			EndIf
-			;********************************************************
-			;end code
-			;********************************************************
-			;DoDebug("[support]user=" &$user)
-			;DoDebug("[support]pass=" &$pass)
-			;DoDebug("[support]os="&GetOSVersion())
-			;DoDebug("[support]compName=" & $compname)
-			;DoDebug("[support]arch=" & $arch)
-			;DoDebug("[support]ip=" &$ip1)
-			;DoDebug("[support]ip2=" &$ip2)
-			;DoDebug("[support]date=" &$date)
-			;DoDebug("[support]OSUser=" &$osuser)
-			;DoDebug("[support]Wifi service="&$WZCSVCStarted)
-			;DoDebug("[support]Wifi Card="&$wifi_card)
-			;DoDebug("[support]Wifi adapter="&$wifi_adapter)
-			;DoDebug("[support]Wifi state="&$wifi_state)
-			DoDebug("[support]LDAP Test:" & $response)
-			$run_already = 1
-
-
-			DoDump("****SU1X Dump of Support Data****")
-			DoDump("****date = " & @YEAR & @MON & @MDAY & @HOUR & @MIN & @SEC)
-			DoDump("****")
-			DoDump("User=" & $user)
-			DoDump("OS=" & GetOSVersion())
-			DoDump("CompName=" & $compname)
-			DoDump("IP1=" & $ip1)
-			DoDump("IP2=" & $ip2)
-			DoDump("System Date=" & $date)
-			DoDump("WZC Serv Started=" & $WZCSVCStarted)
-			DoDump("Wifi Adapter=" & $wifi_adapter)
-			DoDump("Wifi State=" & $wifi_state)
-			DoDump("Wifi Profile=" & $wifi_eduroam_all)
-			DoDump("Wifi Interface=" & $wifi_int_all)
-			DoDump("MAC=" & $mac)
-			DoDump("Driver Version=" & $DriverVersion)
-			DoDump("Driver Date=" & $DriverDate)
-			DoDump("Hardware Ver=" & $HardwareVersion)
-			DoDump("****Support Checks Output****")
-			DoDump("Data Send=" & $output)
-			$cmd = "netsh wlan show all > " & @WindowsDir & "\tracing\showall.txt"
-			;DoDebug("cmd=" & $cmd)
-			;$result = RunWait($cmd, @SW_HIDE)
-			$result = RunWait(@ComSpec & " /c " & $cmd, "", @SW_HIDE)
-			;$netshResult=StdoutRead($result)
-			;*****************************************************
-			;read in trace Files
-			$tracefile = FileOpen(@WindowsDir & "\tracing\showall.txt", 0)
-			; Check if file opened for reading OK
-			If $tracefile = -1 Then
-				DoDebug("[support]Unable to open trace file:" & $tracefile)
-			Else
-				DoDebug("[support]wlan trace file ok:" & $tracefile)
-				While 1
-					$aline = FileReadLine($tracefile)
-					If @error = -1 Then ExitLoop
-					$showall = $showall & $aline & @CRLF
-				WEnd
-				FileClose($tracefile)
-				FileWriteLine($debugFile, "****Netsh Output****")
-				FileWriteLine($debugFile, $showall)
-			EndIf
-			;FileWriteLine($debugFile, $netshResult)
-
-
-			;********************************************************
-			;end code
-			;********************************************************
-
-			;_Wlan_EndSession(-1)
-			if (StringInStr($output, "[FAIL]")) Then
-				$output &= @CRLF & "A problem has been detected."
-				TrayTip("Problem Detected", $output, 30, 3)
-				UpdateOutput("****Problem Detected****")
-			Else
-				$output &= @CRLF & "No problems detected."
-				TrayTip("No Problems Detected", $output, 30, 1)
-				UpdateOutput("No Problem Detected")
-			EndIf
-			;UpdateOutput("Checks Complete")
-			;MsgBox(4096,"Support Report",$output)
-			UpdateProgress(10);
-			GUICtrlSetData($progressbar1, 100)
-			;Setup all done, display hint if hint set and turn off splash if on
-			;if ($USESPLASH == 1) Then SplashOff()
-			;-------------------------------------------------------------------------
-			; All done...
-			$msg = ""
-			;ExitLoop
+			doHelp()
 		EndIf
 		;-----------------------------------------------------------End support button clicked
 		
