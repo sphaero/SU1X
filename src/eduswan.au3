@@ -1234,6 +1234,23 @@ Func addPrinter()
 	;code to remove proxy settings also maybe?
 EndFunc
 
+Func removePrinter()
+	#RequireAdmin
+	checkAdminRights()
+
+	$progress_meter = 0;
+	UpdateOutput("***Removing Printer***")
+	UpdateProgress(20);
+	UpdateProgress(10);
+	$cmd = "rundll32 printui.dll PrintUIEntry /dl /n """ & $printer & """"
+	UpdateProgress(30);
+	$result = RunWait(@ComSpec & " /c " & $cmd)
+	$print_result = StdoutRead($result)
+	UpdateOutput("***Printer Removed***")
+	UpdateProgress(40);
+	;code to remove proxy settings also maybe?
+EndFunc
+
 Func doInstallation()
 	GUICtrlSetData($progressbar1, 0)
 	$progress_meter = 0;
@@ -1926,21 +1943,7 @@ While 1
 
 		;***************************************************************************************REMOVE PRINTER
 		If $msg == $remove_printer Then
-			#RequireAdmin
-			checkAdminRights()
-
-			$progress_meter = 0;
-			UpdateOutput("***Removing Printer***")
-			UpdateProgress(20);
-			UpdateProgress(10);
-			$cmd = "rundll32 printui.dll PrintUIEntry /dl /n """ & $printer & """"
-			UpdateProgress(30);
-			$result = RunWait(@ComSpec & " /c " & $cmd)
-			$print_result = StdoutRead($result)
-			UpdateOutput("***Printer Removed***")
-			UpdateProgress(40);
-
-			;code to remove proxy settings also maybe?
+			removePrinter()
 		EndIf
 		;***************************************************************************************REMOVE PRINTER
 
