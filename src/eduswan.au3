@@ -581,6 +581,7 @@ Func UpdateOutput($output)
 EndFunc   ;==>UpdateOutput
 
 Func CloseWindows()
+	;This in English specific :(
 	If WinExists("Network Connections") Then
 		;WinWaitClose("Network Connections","",15)
 		WinKill("Network Connections")
@@ -812,7 +813,7 @@ $tab = GUICtrlCreateTab(1, 56, 292, 254, $WS_CLIPSIBLINGS)
 $tab1 = GUICtrlCreateTabItem("Setup")
 $installb = GUICtrlCreateButton("Start Setup", 10, 270, 80)
 if ($showup > 0) Then
-	GUICtrlCreateLabel($msg_head, $gui_margin, 80, 274, 40)
+	GUICtrlCreateLabel($msg_head, $gui_margin, 85, 274, 40)
 	GUICtrlCreateLabel($msg_user, $gui_margin, 122, $gui_middle-14, 20, $SS_RIGHT)
 	$userbutton = GUICtrlCreateInput($username, $gui_middle, 120)
 	GUICtrlCreateLabel($msg_pass1, $gui_margin, 142, $gui_middle-14, 20, $SS_RIGHT)
@@ -1198,6 +1199,40 @@ Func doXpChecks()
 		;	Exit
 	EndIf
 EndFunc  ;==>doXpChecks
+
+Func addPrinter()
+	#RequireAdmin
+	checkAdminRights()
+
+	Dim $printer_model
+
+	If (StringInStr(@OSVersion, "VISTA", 0)) Then
+		$printer_model = $printer_vista
+	EndIf
+
+	If (StringInStr(@OSVersion, "7", 0)) Then
+		$printer_model = $printer_7
+	EndIf
+
+	If (StringInStr(@OSVersion, "XP", 0)) Then
+		$printer_model = $printer_xp
+	EndIf
+
+	$progress_meter = 0;
+	UpdateOutput("***Installing Printer***")
+	UpdateProgress(20);
+	if (StringLen($printer_message > 1)) Then
+		MsgBox(16, $printer_message_title, $printer_message)
+	EndIf
+	UpdateProgress(10);
+	$cmd = "rundll32 printui.dll,PrintUIEntry /b """ & $printer & """ /x /n ""Nevermind This"" /if /f %windir%\inf\ntprint.inf /r """ & $printer_port & """ /m """ & $printer_model & """ "
+	UpdateProgress(30);
+	$result = RunWait(@ComSpec & " /c " & $cmd)
+	$print_result = StdoutRead($result)
+	UpdateOutput("***Printer Installed***")
+	UpdateProgress(40);
+	;code to remove proxy settings also maybe?
+EndFunc
 
 Func doInstallation()
 	GUICtrlSetData($progressbar1, 0)
@@ -1885,38 +1920,7 @@ While 1
 
 		;************************************************************ADD PRINTER
 		If $msg == $print Then
-			#RequireAdmin
-			checkAdminRights()
-
-			Dim $printer_model
-
-			If (StringInStr(@OSVersion, "VISTA", 0)) Then
-				$printer_model = $printer_vista
-			EndIf
-
-			If (StringInStr(@OSVersion, "7", 0)) Then
-				$printer_model = $printer_7
-			EndIf
-
-			If (StringInStr(@OSVersion, "XP", 0)) Then
-				$printer_model = $printer_xp
-			EndIf
-
-			$progress_meter = 0;
-			UpdateOutput("***Installing Printer***")
-			UpdateProgress(20);
-			if (StringLen($printer_message > 1)) Then
-				MsgBox(16, $printer_message_title, $printer_message)
-			EndIf
-			UpdateProgress(10);
-			$cmd = "rundll32 printui.dll,PrintUIEntry /b """ & $printer & """ /x /n ""Nevermind This"" /if /f %windir%\inf\ntprint.inf /r """ & $printer_port & """ /m """ & $printer_model & """ "
-			UpdateProgress(30);
-			$result = RunWait(@ComSpec & " /c " & $cmd)
-			$print_result = StdoutRead($result)
-			UpdateOutput("***Printer Installed***")
-			UpdateProgress(40);
-
-			;code to remove proxy settings also maybe?
+			addPrinter()
 		EndIf
 		;***************************************************************************************ADD PRINTER
 
