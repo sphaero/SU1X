@@ -1086,46 +1086,41 @@ Func connectWireless($hClientHandle, $pGUID, $SSID)
 	;ConsoleWrite(_Wlan_GetErrorMessage($a_iCall[0]))
 	Sleep(1500)
 	;check if connected, if not, connect to fallback network
-	Local $loop_count = 0
-	Local $failedConnect = True;
-	While 1
-		;check if connected and got an ip
-		UpdateProgress(2)
+	Local $retry_state
+	For $poll_count = 0 To 7
+		Sleep(2000)
+		UpdateProgress(5)
+
 		$retry_state = _Wlan_QueryInterface($hClientHandle, $pGUID, 3)
-		if (IsArray($retry_state)) Then
-			if (StringCompare("Connected", $retry_state[0], 0) == 0) Then
-				$ip1 = @IPAddress1
-				if ((StringLen($ip1) == 0) OR (StringInStr($ip1, "169.254.") > 0) OR (StringInStr($ip1, "127.0.0") > 0)) Then
-					UpdateOutput("Getting an IP Address...")
+		If (IsArray($retry_state)) Then
+			Switch $retry_state[0]
+			Case "Connected"
+				If (NOT StringLen(@IPAddress1) _
+						OR StringLeft(@IPAddress1, 8) == "169.254.") Then
+					UpdateOutput($SSID & ": Getting an IP Address...")
 				Else
-					DoDebug("[setup]Connected")
-					UpdateOutput($SSID & " connected with ip=" & $ip1)
-					TrayTip("Connected", $msg_connectedto & " " & $SSID, 30, 1)
-					Sleep(2000)
-					$failedConnect = False
 					ExitLoop
 				EndIf
-			EndIf
-
-
-			if (StringCompare("Disconnected", $retry_state[0], 0) == 0) Then
-				DoDebug("[setup]Disconnected")
-				UpdateOutput($SSID & " disconnected")
-			EndIf
-
-			if (StringCompare("Authenticating", $retry_state[0], 0) == 0) Then
-				DoDebug("[setup]Authenticating...")
-				UpdateOutput($SSID & " authenticating...")
-			EndIf
+			Case Else
+				UpdateOutput($SSID & ": " & $retry_state[0] & " " & $poll_count & "...")
+			EndSwitch
 		Else
-			UpdateOutput($SSID & " failed... retrying... ")
+			UpdateOutput($SSID & ": Failed, retrying...")
 		EndIf
-		Sleep(2000)
-		if ($loop_count > 4) Then ExitLoop
-		$loop_count = $loop_count + 1
-	WEnd
-	SetError($failedConnect)
-	Return
+	Next
+	
+	If (NOT (IsArray($retry_state) AND $retry_state[0] == "Connected")) Then
+		UpdateOutput("ERROR: Failed to connect")
+		Return 1
+	ElseIf (NOT StringLen(@IPAddress1) _
+			OR StringLeft(@IPAddress1, 8) == "169.254.") Then
+		UpdateOutput("WARNING: Connected, but failed to get a valid IP address (ip=" & @IPAddress1 & ")")
+		Return 1
+	EndIf
+
+	UpdateOutput($SSID & ": Connected with ip=" & @IPAddress1)
+	TrayTip("Connected", "Connected to " & $SSID & " (ip=" & @IPAddress1 & ")", 30, 1)	
+	Return 0
 EndFunc   ;==>connectWireless
 
 Func getUsername()
@@ -1335,10 +1330,9 @@ Func doInstallation()
 		For $profile In $addprofiles
 			If availableProfile($profile, $hClientHandle, $pGUID) Then
 				;try to connect to all profiles until we have success!
-				connectWireless($hClientHandle, $pGUID, $profile)
-				if (@error) Then
+				$probconnect = connectWireless($hClientHandle, $pGUID, $profile)
+				if $probconnect Then
 					DoDebug($profile & " failed to connect, trying next")
-					$probconnect = 1
 				Else
 					UpdateOutput($msg_connectedto & " "& $profile)
 					return False
