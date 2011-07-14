@@ -1241,6 +1241,89 @@ Func removePrinter()
 	;code to remove proxy settings also maybe?
 EndFunc
 
+;Function to start wifi dll connection and check its not already open
+Func WlanAPIConnect()
+	;hClientHandle returned as @extended
+	if (UBound($Enum)) Then
+		if (StringLen($Enum[0][1]) > 0) Then
+			DoDebug("[WLANConnect]WLANAPI connected")
+			Return 1
+		Else
+			DoDebug("[WLANConnect]WLANAPI connected, but no adapter found")
+			Return 0
+		EndIf
+	Else
+		Local $interfaceWifi = _Wlan_StartSession()
+		If @error Then
+			MsgBox(16, "DEBUG", "Wifi DLL Open Error: " & @extended & $interfaceWifi)
+			Return 0
+		EndIf
+		$hClientHandle = @extended
+		$pGUID = $interfaceWifi[0][0]
+		$Enum = _Wlan_EnumInterfaces($hClientHandle)
+		DoDebug("[WLANConnect]WLANAPI connected:" & $Enum[0][1])
+		Return 1
+	EndIf
+EndFunc   ;==>WlanAPIConnect
+
+;Function to start wifi dll connection and check its not already open
+Func WlanAPIClose($hClientHandle)
+	;hClientHandle returned as @extended
+	_Wlan_EndSession($hClientHandle)
+	If @error Then
+		MsgBox(16, "DEBUG", "Wifi DLL Close Error")
+	EndIf
+EndFunc   ;==>WlanAPIClose
+
+;Function to check if wlanapi in use already. return true if so.
+Func WlanAPICheck($hClientHandle)
+	if (Not ($hClientHandle) Or @error > 0) Then
+		WlanAPIConnect()
+		If @error Then
+			MsgBox(16, "DEBUG", "Wifi DLL Open Error")
+			Return 0
+		ElseIf (UBound($Enum) == 0) Then
+			UpdateOutput("***Wireless Adapter Problem")
+			MsgBox(16, "Error", "No Wireless Adapter Found.")
+			Return 0
+		ElseIf (StringLen($Enum[0][1]) < 1) Then
+			UpdateOutput("***Wireless Adapter Problem")
+			MsgBox(16, "Error", "No Wireless Adapter Found.")
+			Return 0
+		Else
+			Return 1
+		EndIf
+	Else
+		Return 1
+	EndIf
+	Return 1
+EndFunc   ;==>WlanAPICheck
+
+Func tryToConnect($hClientHandle, $pGUID)
+	
+	If WlanAPICheck($hClientHandle) Then
+		$profiles = IterateConfig("getprofile")
+		_ArrayReverse($profiles)
+	
+		For $profile In $profiles
+			If availableProfile($profile, $hClientHandle, $pGUID) Then
+				;try to connect to all profiles until we have success!
+				$probconnect = connectWireless($hClientHandle, $pGUID, $profile)
+				if $probconnect Then
+					DoDebug($profile & " failed to connect, trying next")
+				Else
+					UpdateOutput($msg_connectedto & " "& $profile)
+					return True
+				EndIf
+			Else
+				DoDebug($profile & " not available, trying next")
+			EndIf
+			UpdateProgress(2)
+		Next
+	EndIf
+	Return False
+EndFunc
+
 Func doInstallation()
 	GUICtrlSetData($progressbar1, 0)
 	$progress_meter = 0;
@@ -1269,7 +1352,7 @@ Func doInstallation()
 		case Else
 			UpdateOutput("Unkown Windows version")
 			Return False
-	EndSelect	
+	EndSelect
 		
 	;Get Username from gui
 	$user = getUsername()
@@ -1295,10 +1378,7 @@ Func doInstallation()
 			$Enum = _Wlan_EnumInterfaces($hClientHandle)
 		EndIf
 
-		If (UBound($Enum) == 0) Then
-			DoDebug("[setup]Enumeration of wlan adapter" & @error)
-			MsgBox(16, "Error", "No Wireless Adapter Found.")
-			;Exit
+		If Not WlanApiCheck($hClientHandle) Then
 			UpdateOutput($msg_error_wifiadapter)
 			UpdateProgress(5);
 			return False
@@ -1324,23 +1404,7 @@ Func doInstallation()
 		Next
 
 		;------------------------------------------------CONNECT ATTEMPT
-		_ArrayReverse($addprofiles)
-				
-		$probconnect = 0
-		For $profile In $addprofiles
-			If availableProfile($profile, $hClientHandle, $pGUID) Then
-				;try to connect to all profiles until we have success!
-				$probconnect = connectWireless($hClientHandle, $pGUID, $profile)
-				if $probconnect Then
-					DoDebug($profile & " failed to connect, trying next")
-				Else
-					UpdateOutput($msg_connectedto & " "& $profile)
-					return False
-				EndIf
-			Else
-				DoDebug($profile & " not available, trying next")
-			EndIf
-		Next
+		$probconnect = tryToConnect($hClientHandle, $pGUID)
 		UpdateProgress(10)
 		$run_already = 1
 	EndIf
@@ -1378,9 +1442,13 @@ Func doInstallation()
 	EndIf
 	;-----------------------------------------------------------END CODE
 	UpdateOutput($msg_setup_complete)
-	if ($probconnect > 0) Then UpdateOutput($msg_setup_problem)
-	UpdateProgress(10)
-	return True
+	if ($probconnect == False) Then 
+		UpdateOutput($msg_setup_problem)
+		Return False
+	Else
+		UpdateProgress(10)
+		return True
+	EndIf
 EndFunc   ;==>startInstallation
 
 ;-------------------------------------------------------------------------------
