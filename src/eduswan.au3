@@ -795,6 +795,7 @@ EndFunc   ;==>alreadyRunning
 
 ;-------------------------------------------------------------------------
 ; Start of GUI code
+;-------------------------------------------------------------------------
 DoDebug("***Starting SU1X***")
 alreadyRunning()
 GUISetBkColor(0x00ffff)
@@ -864,7 +865,9 @@ If ($show_printing == 0) Then GUICtrlDelete($tab2)
 If ($show_support == 0) Then GUICtrlDelete($tab3)
 
 GUISetState(@SW_SHOW)
-;-----------------------------------------------------------
+;-------------------------------------------------------------------------
+; End of GUI code
+;-------------------------------------------------------------------------
 
 
 ;-------------------------------------------------------------------------------
@@ -1393,6 +1396,7 @@ Func doInstallation()
 	UpdateProgress(10)
 	return True
 EndFunc   ;==>startInstallation
+
 ;-------------------------------------------------------------------------------
 ; START MAIN LOOP
 ;-------------------------------------------------------------------------------
@@ -1409,38 +1413,36 @@ While 1
 			ExitLoop
 		EndIf
 
-		;-----------------------------------------------------------
-		;If install button clicked
+		;-----------------------------------------------------------If install button clicked
 		If $msg == $installb Then
-			;-----------------------------------------------------------check wired OR wireless
+			;-------------------------------------------------------check wired OR wireless
 			if ($wired == 0 And $wireless == 0) Then
 				DoDebug("Wired AND Wireless set to false in config")
 				MsgBox(1, "error", "Wired AND Wireless set to false in config")
 				Exit
 			EndIf
-			;--------check splash on or off
+			;-------------------------------------------------------check splash on or off
 			If ($USESPLASH == 1) Then SplashImageOn("Installing", $SPLASHFILE, 1965, 1895, 0, 0, 1)
-			;-------------------------------------------------------------------------
-			; Start Installation
+			;-------------------------------------------------------Start Installation
 			if doInstallation() == False Then
 				GUICtrlSetData($progressbar1, 100)
 				ExitLoop
 			EndIf
 			GUICtrlSetData($progressbar1, 100)
-			;Setup all done, display hint if hint set and turn off splash if on
+			;-------------------------------------------------------Setup all done, 
+			;display hint if hint set and turn off splash if on
 			if ($USESPLASH == 1) Then SplashOff()
-			
-			;if ($hint == 1 And $probconnect == 0) Then doHint()
+			if $hint == 1 Then doHint()
 		EndIf
-		;-------------------------------------------------------------------------
-		; All done...
+		;-----------------------------------------------------------End install button clicked
 		
+		;-----------------------------------------------------------Open Debug file clicked
 		If ($msg == $opendebugfile) Then
 			openDebugFile()
 		EndIf
+		;-----------------------------------------------------------End Open Debug file clicked
 		
-		;-----------------------------------------------------------
-		;If suport button clicked
+		;-----------------------------------------------------------If support button clicked
 		If ($msg == $support Or $msg == $gethelp) Then
 			;--------check splash on or off
 			;-------------------------------------------------------------------------
@@ -1855,8 +1857,9 @@ While 1
 			$msg = ""
 			;ExitLoop
 		EndIf
-
-		;*********************************************************REMOVE EDUROAM
+		;-----------------------------------------------------------End support button clicked
+		
+		;-----------------------------------------------------------Remove Profiles
 		If $msg == $remove_wifi Then
 			#RequireAdmin
 			checkAdminRights()
@@ -1933,21 +1936,21 @@ While 1
 			UpdateProgress(100);
 			;code to remove proxy settings also maybe?
 		EndIf
-		;*********************************************************REMOVE EDUROAM
+		;-----------------------------------------------------------End Remove Profiles
 
-		;************************************************************ADD PRINTER
+		;-----------------------------------------------------------ADD PRINTER
 		If $msg == $print Then
 			addPrinter()
 		EndIf
-		;***************************************************************************************ADD PRINTER
+		;-----------------------------------------------------------End ADD PRINTER
 
-		;***************************************************************************************REMOVE PRINTER
+		;-----------------------------------------------------------REMOVE PRINTER
 		If $msg == $remove_printer Then
 			removePrinter()
 		EndIf
-		;***************************************************************************************REMOVE PRINTER
+		;-----------------------------------------------------------End REMOVE PRINTER
 
-		;***************************************************************************************TRY TO CONNECT
+		;-----------------------------------------------------------TRY TO CONNECT
 		If $msg == $tryconnect Then
 			DoDebug("***TRY TO REAUTH***")
 			#RequireAdmin
@@ -2130,10 +2133,9 @@ While 1
 				UpdateProgress(100)
 			EndIf
 		EndIf
+		;-----------------------------------------------------------End Try to Connect
 
-		;*********************************************************TRY TO CONNECT
-
-		;*************************************************MANAGE WIRELESS REAUTH
+		;-----------------------------------------------------------MANAGE WIRELESS REAUTH
 		If (StringInStr($argument1, "auth") > 0) Then
 			DoDebug("[reauth]Disconnecting wifi to retry auth")
 			If (StringInStr(@OSVersion, "7", 0) Or StringInStr(@OSVersion, "VISTA", 0)) Then
@@ -2200,13 +2202,12 @@ While 1
 			CloseConnectWindows()
 			TrayTip("Reconnect to " & $SSID, "Enter your username and password again then click reconnect", 30, 3)
 		EndIf
-
-		;***************************************************************************************MANAGE WIRELESS REAUTH
+		;-----------------------------------------------------------MANAGE WIRELESS REAUTH
 	WEnd
 WEnd
 
 ;-------------------------------------------------------------------------
-;End of Program when loop ends
+;END OF MAIN LOOP
 ;-------------------------------------------------------------------------
 
 Exit
