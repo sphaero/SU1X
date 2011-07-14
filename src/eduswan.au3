@@ -868,6 +868,15 @@ Func setScheduleTask()
 	EndIf
 EndFunc   ;==>setScheduleTask
 
+Func removeScheduleTask()
+	;remove scheduled task
+	#RequireAdmin
+	$stresult = RunWait(@ComSpec & " /c " & "schtasks.exe /delete /tn ""su1x-auth-start-tool"" /F", "", @SW_HIDE)
+	$st_result = StdoutRead($stresult)
+	DoDebug("Scheduled Task removed:" & $st_result)
+	UpdateOutput("Removed Scheduled Task")
+EndFunc ;==>removeScheduleTask
+			
 Func enableNAP($id)
 	DoDebug("[setup]Enabling NAP")
 	;Check if the NAP Agent service is running.
@@ -1917,32 +1926,28 @@ While 1
 		If $msg == $remove_wifi Then
 			#RequireAdmin
 			checkAdminRights()
-
+			
 			;if wireless
 			if ($wireless == 1) Then
 				$hClientHandle = _Wlan_OpenHandle()
 				$Enum = _Wlan_EnumInterfaces($hClientHandle)
-				If (UBound($Enum) == 0) Then
-					DoDebug("[remove]error code on wlan enumeration=" & @error)
-					MsgBox(16, "Error", "No Wireless Adapter Found.")
-					;Exit
+
+				If Not WlanApiCheck($hClientHandle) Then
 					UpdateOutput($msg_error_wifiadapter)
-					UpdateProgress(100);
-					ExitLoop (1)
+					UpdateProgress(5);
+					return False
 				EndIf
 				$pGUID = $Enum[0][0]
+				DoDebug("[setup]Adapter=" & $Enum[0][1] & " GUID:" & $pGUID)
 
-
+				;------------------------------------------REMOVING_PROFILES
 				removeProfiles($hClientHandle, $pGUID)
 
 
 				;remove scheduled task
-				#RequireAdmin
-				;install scheduled task
-				$stresult = RunWait(@ComSpec & " /c " & "schtasks.exe /delete /tn ""su1x-auth-start-tool"" /F", "", @SW_HIDE)
-				$st_result = StdoutRead($stresult)
-				DoDebug("Scheduled Task removed:" & $st_result)
-				UpdateOutput("Removed Scheduled Task")
+				if ($scheduletask == 1) Then
+					removeScheduleTask()
+				EndIf
 			EndIf
 
 			if ($wired == 1) Then
@@ -2006,257 +2011,18 @@ While 1
 
 		;-----------------------------------------------------------TRY TO CONNECT
 		If $msg == $tryconnect Then
-			DoDebug("***TRY TO REAUTH***")
-			#RequireAdmin
-			checkAdminRights()
-			$progress_meter = 0;
-			UpdateProgress(0);
-			UpdateOutput("***Trying to Connect to:" & $SSID & "***")
-			UpdateProgress(0);
-			;check profile set
-			;read in username and password
-			If ($showup > 0) Then
-				$user = GUICtrlRead($userbutton)
-				$pass = GUICtrlRead($passbutton)
-
-				;check username
-				if (StringInStr($user, "123456") > 0 Or StringLen($user) < 1) Then
-					UpdateProgress(100)
-					UpdateOutput($msg_error_user)
-					ExitLoop
-				EndIf
-
-				;check password
-				if (StringLen($pass) < 1) Then
-					UpdateProgress(100)
-					UpdateOutput($msg_error_pass)
-					ExitLoop
-				EndIf
-			EndIf
-
-			UpdateProgress(10)
-
-			If (GetOSVersion() = "WIN7" Or GetOSVersion() = "VISTA") Then
-				;Check if the Wireless Zero Configuration Service is running.  If not start it.
-				If IsServiceRunning("WLANSVC") == 0 Then
-					$WZCSVCStarted = 0
-				Else
-					$WZCSVCStarted = 1
-				EndIf
-			Else
-				;ASSUME XP
-				;***************************************
-				;win XP specific checks
-				If IsServiceRunning("WZCSVC") == 0 Then
-					$WZCSVCStarted = 0
-				Else
-					$WZCSVCStarted = 1
-				EndIf
-			EndIf
-
-			;Check that service running before disconnect
-			If ($WZCSVCStarted) Then
-				;UpdateOutput("Wireless Service OK")
-			Else
-				UpdateOutput("***Wireless Service Problem")
-				ExitLoop
-			EndIf
-
-			if ($run_already > 0) Then
-				_Wlan_EndSession(-1)
-			EndIf
-
+			DoDebug("Try to Connect")
 			$hClientHandle = _Wlan_OpenHandle()
 			$Enum = _Wlan_EnumInterfaces($hClientHandle)
 
-			If (UBound($Enum) == 0) Then
-				DoDebug("[reauth]Error, No Wireless Adapter Found.")
-				$wifi_card = 0
-				UpdateProgress(100)
-				ExitLoop
-			Else
-				$wifi_card = 1
-			EndIf
-
-			If ($wifi_card) Then
-				$pGUID = $Enum[0][0]
-			Else
-				UpdateOutput("***Wireless Adapter Problem")
-				MsgBox(16, "Error", "No Wireless Adapter Found.")
-				UpdateProgress(100)
+			If Not WlanApiCheck($hClientHandle) Then
+				UpdateOutput($msg_error_wifiadapter)
+				UpdateProgress(5);
 				ExitLoop
 			EndIf
-
-			$wifi_eduroam = _Wlan_GetProfile($hClientHandle, $pGUID, $SSID)
-			$findProfile = _ArrayFindAll($wifi_eduroam, $SSID)
-			if (@error) Then
-				$findProfile = False
-			Else
-				$findProfile = True
-			EndIf
-
-			UpdateProgress(20)
-			if ($findProfile == False) Then
-				UpdateOutput("***" & $SSID & " Profile missing, please run setup again.")
-				UpdateProgress(100)
-				ExitLoop
-			Else
-				_Wlan_SetInterface($hClientHandle, $pGUID, 0, "Auto Config Enabled")
-				DoDebug("[reauth]Disconnecting..." & @CRLF)
-				_Wlan_Disconnect($hClientHandle, $pGUID)
-				CloseConnectWindows()
-				Sleep(500)
-				;reset EAP credentials
-				if ($showup > 0) Then
-					Local $credentials[4]
-					$credentials[0] = "PEAP-MSCHAP" ; EAP method
-					$credentials[1] = "" ;domain
-					$credentials[2] = $user ; username
-					$credentials[3] = $pass ; password
-					DoDebug("[reauth]_Wlan_SetProfileUserData" & $hClientHandle & $pGUID & $SSID & $credentials[2])
-					$setCredentials = _Wlan_SetProfileUserData($hClientHandle, $pGUID, $SSID, $credentials)
-					If @error Then
-						DoDebug("[reauth]credential error:" & @ScriptLineNumber & @error & @extended & $setCredentials)
-					EndIf
-					DoDebug("[reauth]Set Credentials=" & $credentials[2] & $credentials[3] & $setCredentials)
-					;if ($tryadditional_profile == 1) Then
-					;	$setCredentials = _Wlan_SetProfileUserData($hClientHandle, $pGUID, $SSID_Additional, $credentials)
-					;	If @error Then
-					;		DoDebug("[reauth]credential additional error:" & @ScriptLineNumber & @error & @extended & $setCredentials)
-					;	EndIf
-					;	DoDebug("[reauth]_Wlan_SetProfileUserData" & $hClientHandle & $pGUID & $SSID_Additional & $credentials[2])
-					;EndIf
-				EndIf
-				UpdateProgress(30)
-				;set priority of new profile
-				SetPriority($hClientHandle, $pGUID, $SSID, $priority)
-				DoDebug("[reauth]Connecting..." & @CRLF)
-				_Wlan_Connect($hClientHandle, $pGUID, $SSID)
-				UpdateOutput("***Connecting...")
-				Sleep(1500)
-				;check if connected, if not, connect to fallback network
-				Local $loop_count = 0
-				While 1
-					;check if connected and got an ip
-					UpdateProgress(5)
-					$retry_state = _Wlan_QueryInterface($hClientHandle, $pGUID, 3)
-					if (IsArray($retry_state)) Then
-						if (StringCompare("Connected", $retry_state[0], 0) == 0) Then
-							$ip1 = @IPAddress1
-							if ((StringLen($ip1) == 0) OR (StringInStr($ip1, "169.254.") > 0) OR (StringInStr($ip1, "127.0.0") > 0)) Then
-								UpdateOutput("Getting an IP Address...")
-							Else
-								DoDebug("[reauth]Connected")
-								UpdateOutput($SSID & " connected with ip=" & $ip1)
-								TrayTip("Connected", "You are now connected to " & $SSID & ".", 30, 1)
-								Sleep(2000)
-								ExitLoop
-								Exit
-							EndIf
-						EndIf
-
-						if (StringCompare("Disconnected", $retry_state[0], 0) == 0) Then
-							DoDebug("[reauth]Disconnected")
-							UpdateOutput($SSID & " disconnected")
-						EndIf
-
-						if (StringCompare("Authenticating", $retry_state[0], 0) == 0) Then
-							DoDebug("[reauth]Authenticating...")
-							UpdateOutput($SSID & " authenticating...")
-						EndIf
-					Else
-						DoDebug("[reauth]failed...")
-						UpdateOutput($SSID & " failed...")
-					EndIf
-
-					Sleep(2000)
-					if ($loop_count > 5) Then ExitLoop
-					$loop_count = $loop_count + 1
-				WEnd
-
-				if (IsArray($retry_state)) Then
-					if (StringCompare("Connected", $retry_state[0], 0) == 0) Then
-						if ((StringLen($ip1) == 0) OR (StringInStr($ip1, "169.254.") > 0) OR (StringInStr($ip1, "127.0.0") > 0)) Then
-							UpdateOutput("Connected but not yet got an IP Address...")
-						EndIf
-					Else
-						UpdateOutput("ERROR:Failed to connected")
-					EndIf
-				EndIf
-
-				UpdateProgress(100)
-			EndIf
+			$pGUID = $Enum[0][0]$probconnect = tryToConnect($hClientHandle, $pGUID)
 		EndIf
 		;-----------------------------------------------------------End Try to Connect
-
-		;-----------------------------------------------------------MANAGE WIRELESS REAUTH
-		If (StringInStr($argument1, "auth") > 0) Then
-			DoDebug("[reauth]Disconnecting wifi to retry auth")
-			If (StringInStr(@OSVersion, "7", 0) Or StringInStr(@OSVersion, "VISTA", 0)) Then
-				;Check if the Wireless Zero Configuration Service is running.  If not start it.
-				If IsServiceRunning("WLANSVC") == 0 Then
-					$WZCSVCStarted = 0
-				Else
-					$WZCSVCStarted = 1
-				EndIf
-			Else
-				;ASSUME XP
-				;***************************************
-				;win XP specific checks
-				If IsServiceRunning("WZCSVC") == 0 Then
-					$WZCSVCStarted = 0
-				Else
-					$WZCSVCStarted = 1
-				EndIf
-			EndIf
-
-			;Check that serviec running before disconnect
-			If ($WZCSVCStarted) Then
-				;UpdateOutput("Wireless Service OK")
-			Else
-				UpdateOutput("***Wireless Service Problem")
-				$argument1 = "fail"
-				ExitLoop
-			EndIf
-
-			if ($run_already > 0) Then
-				_Wlan_EndSession(-1)
-			EndIf
-
-			$hClientHandle = _Wlan_OpenHandle()
-			$Enum = _Wlan_EnumInterfaces($hClientHandle)
-
-
-			If (UBound($Enum) == 0) Then
-				DoDebug("[reauth]Error, No Wireless Adapter Found.")
-				$wifi_card = 0
-				$argument1 = "fail"
-				ExitLoop
-			Else
-				$wifi_card = 1
-			EndIf
-
-			If ($wifi_card) Then
-				$pGUID = $Enum[0][0]
-			Else
-				UpdateOutput($msg_error_wifiadapter)
-				MsgBox(16, "Error", $msg_error_wifiadapter)
-				$argument1 = "fail"
-				ExitLoop
-			EndIf
-
-			;make sure windows can manage wifi card
-			DoDebug("[reauth]Setting windows to manage wifi")
-			$QI = _Wlan_QueryInterface($hClientHandle, $pGUID, 0)
-			;The "use Windows to configure my wireless network settings" checkbox - Needs to be enabled for many funtions to work
-			_Wlan_SetInterface($hClientHandle, $pGUID, 0, "Auto Config Enabled")
-			DoDebug("[reauth]Disconnecting..." & @CRLF)
-			_Wlan_Disconnect($hClientHandle, $pGUID)
-			$argument1 = "done"
-			CloseConnectWindows()
-			TrayTip("Reconnect to " & $SSID, "Enter your username and password again then click reconnect", 30, 3)
-		EndIf
-		;-----------------------------------------------------------MANAGE WIRELESS REAUTH
 	WEnd
 WEnd
 
