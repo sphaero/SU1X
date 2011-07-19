@@ -1459,6 +1459,7 @@ Func doInstallation()
 		UpdateOutput($msg_setup_problem)
 		Return False
 	Else
+		UpdateOutput($msg_setup_success)
 		UpdateProgress(10)
 		return True
 	EndIf
