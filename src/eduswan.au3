@@ -343,6 +343,10 @@ Func openDebugFile()
 	Run("notepad.exe " & $debugFilename, @ScriptDir)
 EndFunc
 
+Func mailDebugFile()
+	MsgBox(4096, "", "placeholder")
+EndFunc
+
 Func doHint()
 	if (GetOSVersion() == "XP" Or GetOSVersion() == "XPSP2") Then
 		$y = 200
@@ -487,7 +491,7 @@ DoDebug("***Starting SU1X***")
 alreadyRunning()
 GUISetBkColor(0x00ffff)
 GUICreate($title, 294, 310, $WS_EX_TRANSPARENT)
-$gui_middle = 130
+$gui_middle = 180
 $gui_space = 30
 $gui_margin = 10
 GUISetBkColor(0xffffff) ;---------------------------------white
@@ -536,13 +540,20 @@ $remove_printer = GUICtrlCreateButton("Remove Printer", 100, 270, 90)
 
 ;--------------------------Support Tab
 $tab3 = GUICtrlCreateTabItem("Help")
-GUICtrlCreateLabel($msg_start_check, $gui_margin, 102, $gui_middle-14, 20, $SS_RIGHT)
+;GUICtrlCreateLabel($msg_start_check, $gui_margin, 102, $gui_middle-14, 20, $SS_RIGHT)
 $support = GUICtrlCreateButton("Start Checks", $gui_middle, 100, 100)
 $gethelp = GUICtrlCreateButton("Start Checks", $gui_middle, 100, 100)
-GUICtrlCreateLabel($msg_remove_wifi, $gui_margin, 132, $gui_middle-14, 20, $SS_RIGHT)
-$remove_wifi = GUICtrlCreateButton("Verwijder " & $network, $gui_middle, 100, 100)
-$openhelppage = GUICtrlCreateButton("Open Hulp pagina", $gui_middle, 140, 100)
-$opendebugfile = GUICtrlCreateButton("Show Debug", $gui_middle, 180, 100)
+;GUICtrlCreateLabel($msg_remove_wifi, $gui_margin, 132, $gui_middle-14, 20, $SS_RIGHT)
+
+GuiCtrlCreateLabel("Verwijder de Airborne configuratie", 10, 95)
+GuiCtrlCreateLabel("Open de support web pagina", 10, 125)
+GuiCtrlCreateLabel("Open het debug log bestand", 10, 155)
+GuiCtrlCreateLabel("Mail het log bestand naar ICT", 10, 185)
+
+$remove_wifi = GUICtrlCreateButton("Verwijder " & $network, $gui_middle, 90, 100)
+$openhelppage = GUICtrlCreateButton("Open Hulp", $gui_middle, 120, 100)
+$opendebugfile = GUICtrlCreateButton("Show Debug", $gui_middle, 150, 100)
+$maildebugfile = GuiCtrlCreateButton("Mail Debug", $gui_middle, 180, 100)
 
 ;--------------------------
 $tab = GUICtrlCreateTabItem("")
@@ -1930,6 +1941,11 @@ While 1
 		If ($msg == $opendebugfile) Then
 			openDebugFile()
 		EndIf
+		
+		If ($msg == $maildebugfile) Then
+			mailDebugFile()
+		EndIf
+		
 		;-----------------------------------------------------------End Open Debug file clicked
 		
 		;-----------------------------------------------------------If support button clicked
