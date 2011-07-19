@@ -491,7 +491,8 @@ DoDebug("***Starting SU1X***")
 alreadyRunning()
 GUISetBkColor(0x00ffff)
 GUICreate($title, 294, 310, $WS_EX_TRANSPARENT)
-$gui_middle = 180
+$gui_middle = 145
+$help_middle = 180
 $gui_space = 30
 $gui_margin = 10
 GUISetBkColor(0xffffff) ;---------------------------------white
@@ -550,10 +551,10 @@ GuiCtrlCreateLabel("Open de support web pagina", 10, 125)
 GuiCtrlCreateLabel("Open het debug log bestand", 10, 155)
 GuiCtrlCreateLabel("Mail het log bestand naar ICT", 10, 185)
 
-$remove_wifi = GUICtrlCreateButton("Verwijder " & $network, $gui_middle, 90, 100)
-$openhelppage = GUICtrlCreateButton("Open Hulp", $gui_middle, 120, 100)
-$opendebugfile = GUICtrlCreateButton("Show Debug", $gui_middle, 150, 100)
-$maildebugfile = GuiCtrlCreateButton("Mail Debug", $gui_middle, 180, 100)
+$remove_wifi = GUICtrlCreateButton("Verwijder " & $network, $help_middle, 90, 100)
+$openhelppage = GUICtrlCreateButton("Open Hulp", $help_middle, 120, 100)
+$opendebugfile = GUICtrlCreateButton("Show Debug", $help_middle, 150, 100)
+$maildebugfile = GuiCtrlCreateButton("Mail Debug", $help_middle, 180, 100)
 
 ;--------------------------
 $tab = GUICtrlCreateTabItem("")
