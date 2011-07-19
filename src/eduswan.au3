@@ -532,14 +532,17 @@ EndIf
 $tab2 = GUICtrlCreateTabItem("Printing")
 $print = GUICtrlCreateButton("Setup Printer", 10, 270, 80)
 $remove_printer = GUICtrlCreateButton("Remove Printer", 100, 270, 90)
+
+
 ;--------------------------Support Tab
 $tab3 = GUICtrlCreateTabItem("Help")
 GUICtrlCreateLabel($msg_start_check, $gui_margin, 102, $gui_middle-14, 20, $SS_RIGHT)
 $support = GUICtrlCreateButton("Start Checks", $gui_middle, 100, 100)
+$gethelp = GUICtrlCreateButton("Start Checks", $gui_middle, 100, 100)
 GUICtrlCreateLabel($msg_remove_wifi, $gui_margin, 132, $gui_middle-14, 20, $SS_RIGHT)
-$remove_wifi = GUICtrlCreateButton("Remove " & $network, $gui_middle, 130, 100)
-$gethelp = GUICtrlCreateButton("Get Help", $gui_middle, 160, 100)
-$opendebugfile = GUICtrlCreateButton("Show Debug", $gui_middle, 190, 100)
+$remove_wifi = GUICtrlCreateButton("Verwijder " & $network, $gui_middle, 100, 100)
+$openhelppage = GUICtrlCreateButton("Open Hulp pagina", $gui_middle, 140, 100)
+$opendebugfile = GUICtrlCreateButton("Show Debug", $gui_middle, 180, 100)
 
 ;--------------------------
 $tab = GUICtrlCreateTabItem("")
@@ -1465,6 +1468,11 @@ Func doInstallation()
 	EndIf
 EndFunc   ;==>startInstallation
 
+
+Func openHelpPage()
+	ShellExecute ($sendsupport_url)
+EndFunc
+
 Func doHelp()
 	;--------check splash on or off
 	;-------------------------------------------------------------------------
@@ -1928,6 +1936,14 @@ While 1
 		If ($msg == $support Or $msg == $gethelp) Then
 			doHelp()
 		EndIf
+		;-----------------------------------------------------------Open help page
+		;
+		;-------------------------------------------------------------------------
+		If ($msg == $openhelppage) Then
+			openHelpPage()
+		EndIf
+		
+		
 		;-----------------------------------------------------------End support button clicked
 		
 		;-----------------------------------------------------------Remove Profiles
